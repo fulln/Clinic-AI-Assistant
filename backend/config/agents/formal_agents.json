@@ -1,0 +1,52 @@
+[
+  {
+    "name": "Medical Auxiliary Assistant",
+    "slug": "medical-auxiliary",
+    "description": "Assists medical staff with clinical documentation, patient triage support, and medical reference queries.",
+    "agent_type": "formal",
+    "capabilities": [],
+    "allowed_roles": ["doctor", "staff", "admin"],
+    "workflow_config": {"workflow_type": "medical-auxiliary"},
+    "version": "1.0.0"
+  },
+  {
+    "name": "Document Organizer",
+    "slug": "document-organizer",
+    "description": "Organizes, indexes, and retrieves clinical documents and patient records efficiently.",
+    "agent_type": "formal",
+    "capabilities": [],
+    "allowed_roles": ["doctor", "staff", "admin"],
+    "workflow_config": {"workflow_type": "document-organizer"},
+    "version": "1.0.0"
+  },
+  {
+    "name": "Operations Consultant",
+    "slug": "operations-consultant",
+    "description": "Provides operational guidance on clinic workflows, scheduling optimization, and resource management.",
+    "agent_type": "formal",
+    "capabilities": [],
+    "allowed_roles": ["doctor", "staff", "admin"],
+    "workflow_config": {"workflow_type": "operations-consultant"},
+    "version": "1.0.0"
+  },
+  {
+    "name": "Health Educator",
+    "slug": "health-educator",
+    "description": "Delivers evidence-based health education content to patients and clinical staff.",
+    "agent_type": "formal",
+    "capabilities": [],
+    "allowed_roles": ["doctor", "staff", "admin"],
+    "workflow_config": {"workflow_type": "health-educator"},
+    "version": "1.0.0"
+  },
+  {
+    "name": "RAG QA Assistant",
+    "slug": "rag-qa",
+    "description": "Answers questions grounded in the clinic's knowledge base using retrieval-augmented generation.",
+    "agent_type": "formal",
+    "capabilities": [],
+    "allowed_roles": ["doctor", "staff", "admin"],
+    "workflow_config": {"workflow_type": "rag-qa"},
+    "version": "1.0.0"
+  }
+]

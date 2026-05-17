@@ -1,0 +1,102 @@
+[
+  {
+    "name": "Demo Medical Auxiliary",
+    "slug": "demo-medical-auxiliary",
+    "description": "Demo version of the Medical Auxiliary Assistant with limited capabilities for evaluation.",
+    "agent_type": "demo",
+    "capabilities": [],
+    "allowed_roles": ["doctor", "staff", "admin"],
+    "workflow_config": {"workflow_type": "demo-medical-auxiliary"},
+    "version": "1.0.0"
+  },
+  {
+    "name": "Demo Document Organizer",
+    "slug": "demo-document-organizer",
+    "description": "Demo version of the Document Organizer for lightweight document management trials.",
+    "agent_type": "demo",
+    "capabilities": [],
+    "allowed_roles": ["doctor", "staff", "admin"],
+    "workflow_config": {"workflow_type": "demo-document-organizer"},
+    "version": "1.0.0"
+  },
+  {
+    "name": "Demo Operations Consultant",
+    "slug": "demo-operations-consultant",
+    "description": "Demo version of the Operations Consultant showcasing clinic workflow optimization.",
+    "agent_type": "demo",
+    "capabilities": [],
+    "allowed_roles": ["doctor", "staff", "admin"],
+    "workflow_config": {"workflow_type": "demo-operations-consultant"},
+    "version": "1.0.0"
+  },
+  {
+    "name": "Demo Health Educator",
+    "slug": "demo-health-educator",
+    "description": "Demo version of the Health Educator providing sample health education interactions.",
+    "agent_type": "demo",
+    "capabilities": [],
+    "allowed_roles": ["doctor", "staff", "admin"],
+    "workflow_config": {"workflow_type": "demo-health-educator"},
+    "version": "1.0.0"
+  },
+  {
+    "name": "Demo RAG QA",
+    "slug": "demo-rag-qa",
+    "description": "Demo version of the RAG QA Assistant using a small sample knowledge base.",
+    "agent_type": "demo",
+    "capabilities": [],
+    "allowed_roles": ["doctor", "staff", "admin"],
+    "workflow_config": {"workflow_type": "demo-rag-qa"},
+    "version": "1.0.0"
+  },
+  {
+    "name": "Symptom Checker Demo",
+    "slug": "symptom-checker-demo",
+    "description": "Interactive symptom checker that guides users through common symptom assessment flows.",
+    "agent_type": "demo",
+    "capabilities": [],
+    "allowed_roles": ["doctor", "staff", "admin"],
+    "workflow_config": {"workflow_type": "symptom-checker-demo"},
+    "version": "1.0.0"
+  },
+  {
+    "name": "Appointment Helper Demo",
+    "slug": "appointment-helper-demo",
+    "description": "Demonstrates automated appointment scheduling and reminder workflows.",
+    "agent_type": "demo",
+    "capabilities": [],
+    "allowed_roles": ["doctor", "staff", "admin"],
+    "workflow_config": {"workflow_type": "appointment-helper-demo"},
+    "version": "1.0.0"
+  },
+  {
+    "name": "Medication Info Demo",
+    "slug": "medication-info-demo",
+    "description": "Provides general medication information, dosage guidelines, and interaction checks.",
+    "agent_type": "demo",
+    "capabilities": [],
+    "allowed_roles": ["doctor", "staff", "admin"],
+    "workflow_config": {"workflow_type": "medication-info-demo"},
+    "version": "1.0.0"
+  },
+  {
+    "name": "Diet Guide Demo",
+    "slug": "diet-guide-demo",
+    "description": "Offers personalized dietary guidance and nutritional recommendations for patients.",
+    "agent_type": "demo",
+    "capabilities": [],
+    "allowed_roles": ["doctor", "staff", "admin"],
+    "workflow_config": {"workflow_type": "diet-guide-demo"},
+    "version": "1.0.0"
+  },
+  {
+    "name": "Mental Wellness Demo",
+    "slug": "mental-wellness-demo",
+    "description": "Demonstrates mental health support conversations and wellness check-in workflows.",
+    "agent_type": "demo",
+    "capabilities": [],
+    "allowed_roles": ["doctor", "staff", "admin"],
+    "workflow_config": {"workflow_type": "mental-wellness-demo"},
+    "version": "1.0.0"
+  }
+]

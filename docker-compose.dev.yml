@@ -1,0 +1,32 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      target: development
+    command: uvicorn src.interfaces.api.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ./backend:/app
+    environment:
+      ENVIRONMENT: development
+
+  celery_worker:
+    build:
+      context: ./backend
+      target: development
+    command: celery -A src.infrastructure.celery_app worker --loglevel=debug --autoreload
+    volumes:
+      - ./backend:/app
+    environment:
+      ENVIRONMENT: development
+
+  frontend:
+    build:
+      context: ./frontend
+      target: development
+    command: npm run dev
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      NODE_ENV: development

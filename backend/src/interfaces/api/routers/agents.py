@@ -48,12 +48,22 @@ def _agent_to_response(agent: Agent) -> AgentResponse:
 @router.get("", response_model=list[AgentResponse])
 async def list_agents(
     agent_type: str | None = None,
+    status_filter: str | None = None,
+    include_all: bool = False,
     current_user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     repo = AgentRepository(db)
+    if include_all:
+        if current_user.role != UserRole.ADMIN:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+        resolved_status = AgentStatus(status_filter) if status_filter else None
+        agents = await repo.find_all(status=resolved_status)
+        if agent_type:
+            agents = [agent for agent in agents if agent.agent_type.value == agent_type]
+        return [_agent_to_response(agent) for agent in agents]
+
     agents = await repo.find_published(agent_type=agent_type)
-    # Filter by allowed_roles so each user only sees agents they may use
     role_value = current_user.role.value
     filtered = [a for a in agents if not a.allowed_roles or role_value in a.allowed_roles]
     return [_agent_to_response(a) for a in filtered]

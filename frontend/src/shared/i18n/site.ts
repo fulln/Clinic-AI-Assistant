@@ -16,6 +16,7 @@ type SiteDictionary = {
   roleStaff: string;
   navConversation: string;
   navAgents: string;
+  navAgentManagement: string;
   navKnowledgeBase: string;
   authLoginTitle: string;
   authLoginSubtitle: string;
@@ -33,14 +34,26 @@ type SiteDictionary = {
   conversationDemoSuffix: string;
   agentsTitle: string;
   agentsSubtitle: string;
+  agentsManagementTitle: string;
+  agentsManagementSubtitle: string;
   agentsTabAll: string;
   agentsTabFormal: string;
   agentsTabDemo: string;
+  agentsStatusDraft: string;
+  agentsStatusPublished: string;
+  agentsStatusArchived: string;
   agentsLoadFailed: string;
   agentsEmpty: string;
   agentsDemoEnter: string;
   agentsNotFound: string;
   agentsInitConversation: string;
+  agentsActions: string;
+  agentsPublish: string;
+  agentsArchive: string;
+  agentsNoVersion: string;
+  agentsAllowedRoles: string;
+  agentsManagementForbidden: string;
+  agentsActionFailed: string;
   ragTitle: string;
   ragDoctorOnlyTitle: string;
   ragDoctorOnlySubtitle: string;
@@ -90,6 +103,7 @@ const dictionaries: Record<Locale, SiteDictionary> = {
     roleStaff: '员工',
     navConversation: '对话',
     navAgents: '智能体',
+    navAgentManagement: 'Agent 管理',
     navKnowledgeBase: '知识库',
     authLoginTitle: '诊所 AI 助手',
     authLoginSubtitle: '请登录您的账户',
@@ -107,14 +121,26 @@ const dictionaries: Record<Locale, SiteDictionary> = {
     conversationDemoSuffix: '（演示）',
     agentsTitle: '智能体目录',
     agentsSubtitle: '浏览并使用可用的 AI 智能体',
+    agentsManagementTitle: 'Agent 管理',
+    agentsManagementSubtitle: '查看全部智能体并执行发布或归档操作',
     agentsTabAll: '全部',
     agentsTabFormal: '正式',
     agentsTabDemo: '演示',
+    agentsStatusDraft: '草稿',
+    agentsStatusPublished: '已发布',
+    agentsStatusArchived: '已归档',
     agentsLoadFailed: '加载智能体失败，请稍后重试。',
     agentsEmpty: '暂无可用智能体',
     agentsDemoEnter: '进入演示',
     agentsNotFound: '智能体不存在。',
     agentsInitConversation: '正在初始化对话…',
+    agentsActions: '操作',
+    agentsPublish: '发布',
+    agentsArchive: '归档',
+    agentsNoVersion: '未发布',
+    agentsAllowedRoles: '允许角色',
+    agentsManagementForbidden: '仅管理员可访问 Agent 管理。',
+    agentsActionFailed: 'Agent 操作失败，请重试。',
     ragTitle: 'RAG 知识库管理',
     ragDoctorOnlyTitle: '此功能仅限医师使用',
     ragDoctorOnlySubtitle: '请使用医师账号登录后访问。',
@@ -162,6 +188,7 @@ const dictionaries: Record<Locale, SiteDictionary> = {
     roleStaff: 'Staff',
     navConversation: 'Conversation',
     navAgents: 'Agents',
+    navAgentManagement: 'Agent Management',
     navKnowledgeBase: 'Knowledge Base',
     authLoginTitle: 'Clinic AI Assistant',
     authLoginSubtitle: 'Sign in to your account',
@@ -179,15 +206,27 @@ const dictionaries: Record<Locale, SiteDictionary> = {
     conversationDemoSuffix: '(Demo)',
     agentsTitle: 'Agent Catalog',
     agentsSubtitle: 'Browse and use available AI agents',
+    agentsManagementTitle: 'Agent Management',
+    agentsManagementSubtitle: 'Review all agents and publish or archive them',
     agentsTabAll: 'All',
     agentsTabFormal: 'Formal',
     agentsTabDemo: 'Demo',
+    agentsStatusDraft: 'Draft',
+    agentsStatusPublished: 'Published',
+    agentsStatusArchived: 'Archived',
     agentsLoadFailed: 'Failed to load agents. Please try again later.',
     agentsEmpty: 'No agents are currently available.',
     agentsDemoEnter: 'Open Demo',
     agentsNotFound: 'Agent not found.',
     agentsInitConversation: 'Initializing conversation…',
-    ragTitle: 'RAG Knowledge Base Management',
+    agentsActions: 'Actions',
+    agentsPublish: 'Publish',
+    agentsArchive: 'Archive',
+    agentsNoVersion: 'Unpublished',
+    agentsAllowedRoles: 'Allowed roles',
+    agentsManagementForbidden: 'Only admins can access agent management.',
+    agentsActionFailed: 'Agent action failed. Please try again.',
+  ragTitle: 'RAG Knowledge Base Management',
     ragDoctorOnlyTitle: 'This feature is only available to doctors',
     ragDoctorOnlySubtitle: 'Please sign in with a doctor account to continue.',
     ragCreateTitle: 'Create knowledge base',

@@ -16,6 +16,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const navItems = [
     { href: '/conversation', label: copy.navConversation },
     { href: '/agents', label: copy.navAgents },
+    ...(user?.role === 'admin' ? [{ href: '/agent-management', label: copy.navAgentManagement }] : []),
     ...(user?.role === 'doctor' ? [{ href: '/rag', label: copy.navKnowledgeBase }] : []),
   ];
 

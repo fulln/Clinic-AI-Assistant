@@ -13,7 +13,7 @@ services:
     build:
       context: ./backend
       target: development
-    command: celery -A src.infrastructure.celery_app worker --loglevel=debug --autoreload
+    command: celery -A src.infrastructure.celery_app worker --loglevel=debug
     volumes:
       - ./backend:/app
     environment:

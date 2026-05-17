@@ -111,7 +111,7 @@ class UserModel(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
     username: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(String(256), nullable=False)
-    role: Mapped[UserRole] = mapped_column(Enum(UserRole), nullable=False)
+    role: Mapped[UserRole] = mapped_column(Enum(UserRole, values_callable=lambda x: [e.value for e in x]), nullable=False)
     display_name: Mapped[str] = mapped_column(String(100), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), default=_now)
@@ -139,12 +139,12 @@ class AgentModel(Base):
     name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     slug: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     description: Mapped[str] = mapped_column(String(500), nullable=False)
-    agent_type: Mapped[AgentType] = mapped_column(Enum(AgentType), nullable=False)
+    agent_type: Mapped[AgentType] = mapped_column(Enum(AgentType, values_callable=lambda x: [e.value for e in x]), nullable=False)
     capabilities: Mapped[list] = mapped_column(JSON, default=list)
     workflow_config: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     allowed_roles: Mapped[list] = mapped_column(JSON, default=list)
     status: Mapped[AgentStatus] = mapped_column(
-        Enum(AgentStatus), default=AgentStatus.DRAFT, nullable=False
+        Enum(AgentStatus, values_callable=lambda x: [e.value for e in x]), default=AgentStatus.DRAFT, nullable=False
     )
     version: Mapped[str | None] = mapped_column(String(20), nullable=True)
     created_by: Mapped[uuid.UUID | None] = mapped_column(
@@ -188,7 +188,7 @@ class PublishingBatchModel(Base):
     )
     submitted_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), default=_now)
     status: Mapped[BatchStatus] = mapped_column(
-        Enum(BatchStatus), default=BatchStatus.PENDING, nullable=False
+        Enum(BatchStatus, values_callable=lambda x: [e.value for e in x]), default=BatchStatus.PENDING, nullable=False
     )
     total_count: Mapped[int] = mapped_column(Integer, default=0)
     success_count: Mapped[int] = mapped_column(Integer, default=0)
@@ -208,7 +208,7 @@ class PublishingBatchItemModel(Base):
     )
     agent_config: Mapped[dict] = mapped_column(JSON, nullable=False)
     status: Mapped[ItemStatus] = mapped_column(
-        Enum(ItemStatus), default=ItemStatus.PENDING, nullable=False
+        Enum(ItemStatus, values_callable=lambda x: [e.value for e in x]), default=ItemStatus.PENDING, nullable=False
     )
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     agent_id: Mapped[uuid.UUID | None] = mapped_column(
@@ -281,7 +281,7 @@ class MessageModel(Base):
     agent_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("agents.id"), nullable=True
     )
-    role: Mapped[MessageRole] = mapped_column(Enum(MessageRole), nullable=False)
+    role: Mapped[MessageRole] = mapped_column(Enum(MessageRole, values_callable=lambda x: [e.value for e in x]), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     has_disclaimer: Mapped[bool] = mapped_column(Boolean, default=False)
     metadata_: Mapped[dict] = mapped_column("metadata", JSON, default=dict)
@@ -328,7 +328,7 @@ class DocumentModel(Base):
     file_size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
     mime_type: Mapped[str] = mapped_column(String(100), nullable=False)
     status: Mapped[DocumentStatus] = mapped_column(
-        Enum(DocumentStatus), default=DocumentStatus.UPLOADING, nullable=False
+        Enum(DocumentStatus, values_callable=lambda x: [e.value for e in x]), default=DocumentStatus.UPLOADING, nullable=False
     )
     chunk_count: Mapped[int] = mapped_column(Integer, default=0)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -376,12 +376,12 @@ class AuditLogModel(Base):
     actor_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
     )
-    actor_role: Mapped[UserRole | None] = mapped_column(Enum(UserRole), nullable=True)
+    actor_role: Mapped[UserRole | None] = mapped_column(Enum(UserRole, values_callable=lambda x: [e.value for e in x]), nullable=True)
     session_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
-    action: Mapped[AuditAction] = mapped_column(Enum(AuditAction), nullable=False)
+    action: Mapped[AuditAction] = mapped_column(Enum(AuditAction, values_callable=lambda x: [e.value for e in x]), nullable=False)
     resource_type: Mapped[str] = mapped_column(String(50), nullable=False)
     resource_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
-    outcome: Mapped[AuditOutcome] = mapped_column(Enum(AuditOutcome), nullable=False)
+    outcome: Mapped[AuditOutcome] = mapped_column(Enum(AuditOutcome, values_callable=lambda x: [e.value for e in x]), nullable=False)
     ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=False), default=_now, server_default=func.now()

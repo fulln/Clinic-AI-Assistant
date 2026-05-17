@@ -77,6 +77,11 @@ class BatchPublishingService:
             )
 
             try:
+                existing_agent = await self._agent_repo.find_by_slug(slug)
+                if existing_agent:
+                    agent.id = existing_agent.id
+                    agent.created_at = existing_agent.created_at
+                    agent.created_by = existing_agent.created_by
                 saved_agent = await self._agent_repo.save(agent)
                 aggregate.mark_item_success(index, saved_agent.id)
             except Exception as exc:

@@ -56,13 +56,28 @@
 - **Rationale**: User explicitly specified Docker; Docker Compose is sufficient for single-clinic scale; pgvector available as official Docker image.
 - **Alternatives considered**: Kubernetes — over-engineered for <200 users single deployment; plain bare-metal — loses reproducibility.
 
+### Decision 11: Internationalization Strategy
+- **Decision**: Use a session-level `locale` (`zh-CN` / `en-US`) as the source of truth for conversation language, and reuse repository-local translation dictionaries for frontend and backend copy.
+- **Rationale**: The requirement is not only UI translation but deterministic AI response localization. A session-scoped locale lets one user keep multiple conversations in different languages without collision. Local dictionaries keep copy reviewable and avoid adding a new dependency prematurely.
+- **Alternatives considered**: Browser-language auto-detection only — not stable enough for clinical workflows; global per-user locale only — cannot support mixed-language parallel conversations; immediate adoption of a full i18n framework — heavier than needed for the current two-locale dashboard scope.
+
+### Decision 12: AI Reply Language Control
+- **Decision**: Enforce reply language through explicit prompt instructions on both supervisor and child-agent workflows, while keeping disclaimer/refusal/error copy outside the model as localized constants.
+- **Rationale**: Prompt instructions are the least invasive way to make existing LangGraph workflows reply in the selected language. Compliance copy must not be model-generated because wording must remain exact and testable.
+- **Alternatives considered**: Post-generation translation pass — adds latency and may distort medical nuance; separate model deployments per language — unnecessary operational complexity; letting the model infer language from the latest user message — brittle when UI language and message language differ.
+
+### Decision 13: SSE Localization Surface
+- **Decision**: Localize not only final assistant content but also SSE `progress`, `disclaimer`, and error payloads, with the effective locale included in session state and optionally echoed in stream metadata.
+- **Rationale**: If only the final answer is translated, the user still sees mixed-language UX during streaming. Progress and error payloads originate from backend orchestration, so they must use the same locale contract.
+- **Alternatives considered**: Frontend-only translation of backend status keys — possible for fixed progress labels, but backend-generated detail text and disclaimer payload still require locale-aware source copy.
+
 ## LangGraph Agent Architecture
 
 Each agent is a `StateGraph` with these standard nodes:
 1. `context_loader` — loads conversation history + user's RAG knowledge base (if doctor + RAG enabled)
 2. `intent_classifier` — classifies request; rejects if diagnostic/prescriptive intent detected
 3. `tool_executor` — executes agent-specific tools (document search, RAG query, operation lookup)
-4. `response_generator` — generates response with mandatory disclaimer injection
+4. `response_generator` — generates a response in the effective session locale with mandatory localized disclaimer injection
 5. `context_saver` — persists updated conversation state
 
 Formal agents (5): medical_auxiliary, document_organizer, operations_consultant, health_educator, rag_qa
@@ -85,3 +100,4 @@ Demo agents (10): lightweight versions of the above with simplified tool sets an
 - JWT refresh token rotation: invalidate old token on refresh to prevent token reuse attacks.
 - Redis session keys must use user-scoped namespacing: `session:{user_id}:{session_id}`.
 - All API endpoints must validate role claims from JWT, not rely solely on frontend routing.
+- Localized disclaimer and refusal copy must be version-controlled constants reviewed by product/compliance, not free-form prompt text.

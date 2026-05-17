@@ -36,9 +36,10 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 
-async def _create_extensions(conn) -> None:
-    await conn.execute(text('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"'))
-    await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+def _do_run_migrations(connection) -> None:
+    context.configure(connection=connection, target_metadata=target_metadata)
+    with context.begin_transaction():
+        context.run_migrations()
 
 
 async def run_async_migrations() -> None:
@@ -47,13 +48,15 @@ async def run_async_migrations() -> None:
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
+    # Create extensions in their own transaction before migrations
+    async with connectable.begin() as conn:
+        await conn.execute(text('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"'))
+        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+
+    # Run migrations in a fresh connection
     async with connectable.connect() as connection:
-        await _create_extensions(connection)
-        await connection.run_sync(
-            lambda conn: context.configure(conn, target_metadata=target_metadata)
-        )
-        async with connection.begin():
-            await connection.run_sync(lambda conn: context.run_migrations())
+        await connection.run_sync(_do_run_migrations)
+
     await connectable.dispose()
 
 

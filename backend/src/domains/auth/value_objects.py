@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime, timedelta
 
 import bcrypt
-from jose import jwt
+import jwt as _jwt
 
 
 class Password:
@@ -39,7 +39,7 @@ class Token:
             "exp": datetime.utcnow() + timedelta(minutes=expire_minutes),
             "type": "access",
         }
-        return jwt.encode(payload, cls._secret(), algorithm=cls.ALGORITHM), jti
+        return _jwt.encode(payload, cls._secret(), algorithm=cls.ALGORITHM), jti
 
     @classmethod
     def create_refresh(cls, user_id: uuid.UUID, device_id: str) -> str:
@@ -50,8 +50,8 @@ class Token:
             "exp": datetime.utcnow() + timedelta(days=expire_days),
             "type": "refresh",
         }
-        return jwt.encode(payload, cls._secret(), algorithm=cls.ALGORITHM)
+        return _jwt.encode(payload, cls._secret(), algorithm=cls.ALGORITHM)
 
     @classmethod
     def decode(cls, token: str) -> dict:
-        return jwt.decode(token, cls._secret(), algorithms=[cls.ALGORITHM])
+        return _jwt.decode(token, cls._secret(), algorithms=[cls.ALGORITHM])

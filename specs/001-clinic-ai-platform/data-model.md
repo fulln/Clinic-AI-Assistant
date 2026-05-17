@@ -114,9 +114,14 @@ ConversationSession
 ├── active_agent_id: UUID (FK → Agent.id, nullable)
 ├── context_snapshot: JSON  (LangGraph checkpoint state, last N messages)
 ├── rag_enabled: bool (default: false)
+├── locale: LocaleCode (enum: zh-CN | en-US, default: zh-CN)
 ├── created_at: datetime (UTC)
 └── last_activity_at: datetime (UTC)
 ```
+
+**Invariants**:
+- `locale` MUST be one of the supported locale codes and is the single source of truth for the current session language.
+- Switching `active_agent_id` or toggling `rag_enabled` MUST NOT reset `locale`.
 
 **Note**: `context_snapshot` is also cached in Redis at key `session:{session_id}:context` (TTL: 24h). The PostgreSQL record is the source of truth; Redis is the performance cache.
 
@@ -130,7 +135,7 @@ Message
 ├── role: MessageRole (enum: user | assistant | system)
 ├── content: text
 ├── has_disclaimer: bool    (true if content has medical disclaimer appended)
-├── metadata: JSON          (tool_calls, citations, latency_ms, etc.)
+├── metadata: JSON          (tool_calls, citations, latency_ms, locale, disclaimer_locale, etc.)
 ├── created_at: datetime (UTC)
 └── is_deleted: bool (soft delete only)
 ```
@@ -138,7 +143,15 @@ Message
 **Invariants**:
 - `role = assistant` MUST have `agent_id` set.
 - If `role = assistant` and agent handles medical content, `has_disclaimer` MUST be `true`.
+- If `role = assistant`, `metadata.locale` SHOULD record the effective session locale used to generate the response for audit/debugging.
 - `content` of deleted messages is overwritten with `[REDACTED]`; `is_deleted` stays `true`.
+
+**Value Object: LocaleCode**
+```
+LocaleCode: Enum
+├── zh-CN   # Simplified Chinese
+└── en-US   # English
+```
 
 ---
 
@@ -211,7 +224,7 @@ AuditLog
 
 **AuditAction values**: `user.login`, `user.logout`, `message.sent`, `message.refused`,
 `document.uploaded`, `document.deleted`, `agent.published`, `agent.archived`,
-`knowledge_base.created`, `knowledge_base.deleted`, `batch.submitted`.
+`knowledge_base.created`, `knowledge_base.deleted`, `batch.submitted`, `session.updated`.
 
 **Invariants**:
 - AuditLog records are NEVER updated or deleted (append-only enforced at application layer + DB trigger).
@@ -242,11 +255,17 @@ CREATE TYPE audit_outcome AS ENUM ('success', 'failure', 'refused');
 -- audit_logs: idx on actor_id + created_at, idx on resource_type + resource_id
 ```
 
+**Schema delta for i18n support**:
+- `conversation_sessions.locale` → `VARCHAR(10) NOT NULL DEFAULT 'zh-CN'`
+- Existing session rows are backfilled to `zh-CN`
+- `messages.metadata` stores `locale` and `disclaimer_locale` for assistant messages
+
 ## Redis Key Schemas
 
 | Key Pattern | Value | TTL | Purpose |
 |-------------|-------|-----|---------|
 | `session:{session_id}:context` | JSON (LangGraph state) | 24h | Active conversation context cache |
+| `session:{session_id}:locale` | `zh-CN` / `en-US` | 24h | Optional hot cache for current session locale if separated from context snapshot |
 | `user:{user_id}:token:{jti}` | `{exp_ts}` | = token TTL | Valid access token registry |
 | `blacklist:token:{jti}` | `1` | = original token TTL | Revoked token blacklist (logout) |
 | `refresh:{user_id}:{device_id}` | `{refresh_token_hash}` | 7d | Refresh token storage |

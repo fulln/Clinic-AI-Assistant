@@ -7,6 +7,26 @@ export interface Message {
   agentId?: string;
   hasDisclaimer: boolean;
   createdAt: string;
+  progressSteps?: MessageProgress[];
+}
+
+export interface MessageProgress {
+  stage: string;
+  message: string;
+  agent_id?: string | null;
+  agent_name?: string | null;
+  workflow_type?: string | null;
+  artifacts?: MessageProgressArtifact[];
+}
+
+export interface MessageProgressArtifact {
+  type: string;
+  title: string;
+  subtitle?: string | null;
+  score?: number | null;
+  content: string;
+  document_id?: string | null;
+  chunk_id?: string | null;
 }
 
 export interface ConversationSession {

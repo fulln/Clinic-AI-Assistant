@@ -14,37 +14,55 @@ down_revision = None
 branch_labels = None
 depends_on = None
 
+# Reusable enum references — create_type=False because we create them explicitly below
+_userrole = postgresql.ENUM("doctor", "staff", "admin", name="userrole", create_type=False)
+_agenttype = postgresql.ENUM("formal", "demo", name="agenttype", create_type=False)
+_agentstatus = postgresql.ENUM("draft", "published", "archived", name="agentstatus", create_type=False)
+_messagerole = postgresql.ENUM("user", "assistant", "system", name="messagerole", create_type=False)
+_docstatus = postgresql.ENUM("uploading", "processing", "ready", "failed", name="documentstatus", create_type=False)
+_batchstatus = postgresql.ENUM("pending", "processing", "completed", "partial_failure", name="batchstatus", create_type=False)
+_itemstatus = postgresql.ENUM("pending", "success", "failed", name="itemstatus", create_type=False)
+_auditoutcome = postgresql.ENUM("success", "failure", "refused", name="auditoutcome", create_type=False)
+_auditaction = postgresql.ENUM(
+    "user.login", "user.logout", "message.sent", "message.refused",
+    "document.uploaded", "document.deleted", "agent.published", "agent.archived",
+    "knowledge_base.created", "knowledge_base.deleted", "batch.submitted",
+    "knowledge_base.queried", "session.updated",
+    name="auditaction",
+    create_type=False,
+)
+
 
 def upgrade() -> None:
     # Extensions are created in env.py before migrations run
 
-    # Enums
-    user_role = postgresql.ENUM("doctor", "staff", "admin", name="userrole")
-    agent_type = postgresql.ENUM("formal", "demo", name="agenttype")
-    agent_status = postgresql.ENUM("draft", "published", "archived", name="agentstatus")
-    message_role = postgresql.ENUM("user", "assistant", "system", name="messagerole")
-    doc_status = postgresql.ENUM("uploading", "processing", "ready", "failed", name="documentstatus")
-    batch_status = postgresql.ENUM("pending", "processing", "completed", "partial_failure", name="batchstatus")
-    item_status = postgresql.ENUM("pending", "success", "failed", name="itemstatus")
-    audit_outcome = postgresql.ENUM("success", "failure", "refused", name="auditoutcome")
-    audit_action = postgresql.ENUM(
-        "user.login", "user.logout", "message.sent", "message.refused",
-        "document.uploaded", "document.deleted", "agent.published", "agent.archived",
-        "knowledge_base.created", "knowledge_base.deleted", "batch.submitted",
-        "knowledge_base.queried", "session.updated",
-        name="auditaction",
-    )
-
-    for e in [user_role, agent_type, agent_status, message_role, doc_status,
-              batch_status, item_status, audit_outcome, audit_action]:
-        e.create(op.get_bind())
+    # Create all enum types explicitly (once)
+    bind = op.get_bind()
+    for e in [
+        postgresql.ENUM("doctor", "staff", "admin", name="userrole"),
+        postgresql.ENUM("formal", "demo", name="agenttype"),
+        postgresql.ENUM("draft", "published", "archived", name="agentstatus"),
+        postgresql.ENUM("user", "assistant", "system", name="messagerole"),
+        postgresql.ENUM("uploading", "processing", "ready", "failed", name="documentstatus"),
+        postgresql.ENUM("pending", "processing", "completed", "partial_failure", name="batchstatus"),
+        postgresql.ENUM("pending", "success", "failed", name="itemstatus"),
+        postgresql.ENUM("success", "failure", "refused", name="auditoutcome"),
+        postgresql.ENUM(
+            "user.login", "user.logout", "message.sent", "message.refused",
+            "document.uploaded", "document.deleted", "agent.published", "agent.archived",
+            "knowledge_base.created", "knowledge_base.deleted", "batch.submitted",
+            "knowledge_base.queried", "session.updated",
+            name="auditaction",
+        ),
+    ]:
+        e.create(bind)
 
     op.create_table(
         "users",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
         sa.Column("username", sa.String(50), unique=True, nullable=False),
         sa.Column("password_hash", sa.String(256), nullable=False),
-        sa.Column("role", sa.Enum("doctor", "staff", "admin", name="userrole"), nullable=False),
+        sa.Column("role", _userrole, nullable=False),
         sa.Column("display_name", sa.String(100), nullable=False),
         sa.Column("is_active", sa.Boolean, default=True, nullable=False),
         sa.Column("created_at", sa.DateTime, nullable=False),
@@ -57,11 +75,11 @@ def upgrade() -> None:
         sa.Column("name", sa.String(100), unique=True, nullable=False),
         sa.Column("slug", sa.String(100), unique=True, nullable=False),
         sa.Column("description", sa.String(500), nullable=False),
-        sa.Column("agent_type", sa.Enum("formal", "demo", name="agenttype"), nullable=False),
+        sa.Column("agent_type", _agenttype, nullable=False),
         sa.Column("capabilities", sa.JSON, nullable=False),
         sa.Column("workflow_config", sa.JSON, nullable=False),
         sa.Column("allowed_roles", sa.JSON, nullable=False),
-        sa.Column("status", sa.Enum("draft", "published", "archived", name="agentstatus"), nullable=False),
+        sa.Column("status", _agentstatus, nullable=False),
         sa.Column("version", sa.String(20), nullable=True),
         sa.Column("created_by", postgresql.UUID(as_uuid=True), sa.ForeignKey("users.id"), nullable=True),
         sa.Column("created_at", sa.DateTime, nullable=False),
@@ -85,7 +103,7 @@ def upgrade() -> None:
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
         sa.Column("submitted_by", postgresql.UUID(as_uuid=True), sa.ForeignKey("users.id"), nullable=False),
         sa.Column("submitted_at", sa.DateTime, nullable=False),
-        sa.Column("status", sa.Enum("pending", "processing", "completed", "partial_failure", name="batchstatus"), nullable=False),
+        sa.Column("status", _batchstatus, nullable=False),
         sa.Column("total_count", sa.Integer, default=0),
         sa.Column("success_count", sa.Integer, default=0),
         sa.Column("failure_count", sa.Integer, default=0),
@@ -96,7 +114,7 @@ def upgrade() -> None:
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
         sa.Column("batch_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("publishing_batches.id", ondelete="CASCADE"), nullable=False),
         sa.Column("agent_config", sa.JSON, nullable=False),
-        sa.Column("status", sa.Enum("pending", "success", "failed", name="itemstatus"), nullable=False),
+        sa.Column("status", _itemstatus, nullable=False),
         sa.Column("error_message", sa.Text, nullable=True),
         sa.Column("agent_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("agents.id"), nullable=True),
     )
@@ -127,7 +145,7 @@ def upgrade() -> None:
         sa.Column("conversation_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("conversations.id", ondelete="CASCADE"), nullable=False),
         sa.Column("session_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("conversation_sessions.id"), nullable=False),
         sa.Column("agent_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("agents.id"), nullable=True),
-        sa.Column("role", sa.Enum("user", "assistant", "system", name="messagerole"), nullable=False),
+        sa.Column("role", _messagerole, nullable=False),
         sa.Column("content", sa.Text, nullable=False),
         sa.Column("has_disclaimer", sa.Boolean, default=False),
         sa.Column("metadata", sa.JSON, nullable=False),
@@ -154,7 +172,7 @@ def upgrade() -> None:
         sa.Column("filename", sa.String(255), nullable=False),
         sa.Column("file_size_bytes", sa.Integer, nullable=False),
         sa.Column("mime_type", sa.String(100), nullable=False),
-        sa.Column("status", sa.Enum("uploading", "processing", "ready", "failed", name="documentstatus"), nullable=False),
+        sa.Column("status", _docstatus, nullable=False),
         sa.Column("chunk_count", sa.Integer, default=0),
         sa.Column("error_message", sa.Text, nullable=True),
         sa.Column("created_at", sa.DateTime, nullable=False),
@@ -182,18 +200,12 @@ def upgrade() -> None:
         "audit_logs",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
         sa.Column("actor_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("users.id"), nullable=True),
-        sa.Column("actor_role", sa.Enum("doctor", "staff", "admin", name="userrole"), nullable=True),
+        sa.Column("actor_role", _userrole, nullable=True),
         sa.Column("session_id", postgresql.UUID(as_uuid=True), nullable=True),
-        sa.Column("action", sa.Enum(
-            "user.login", "user.logout", "message.sent", "message.refused",
-            "document.uploaded", "document.deleted", "agent.published", "agent.archived",
-            "knowledge_base.created", "knowledge_base.deleted", "batch.submitted",
-            "knowledge_base.queried", "session.updated",
-            name="auditaction",
-        ), nullable=False),
+        sa.Column("action", _auditaction, nullable=False),
         sa.Column("resource_type", sa.String(50), nullable=False),
         sa.Column("resource_id", postgresql.UUID(as_uuid=True), nullable=True),
-        sa.Column("outcome", sa.Enum("success", "failure", "refused", name="auditoutcome"), nullable=False),
+        sa.Column("outcome", _auditoutcome, nullable=False),
         sa.Column("ip_address", sa.String(45), nullable=True),
         sa.Column("created_at", sa.DateTime, nullable=False, server_default=sa.func.now()),
         sa.Column("detail", sa.JSON, nullable=False),

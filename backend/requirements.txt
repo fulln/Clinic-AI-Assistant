@@ -3,10 +3,13 @@ fastapi==0.115.5
 uvicorn[standard]==0.32.1
 
 # LangChain / LangGraph
-langchain==0.3.7
-langchain-openai==0.2.9
-langgraph==0.2.53
+langchain>=0.3.7,<0.4.0
+langchain-openai>=0.2.9,<0.4.0
+langgraph>=0.3.0,<0.4.0
 langgraph-checkpoint-redis==0.0.4
+
+# OpenAI SDK (used directly for embeddings)
+openai>=1.54.0,<2.0.0
 
 # Database
 sqlalchemy[asyncio]==2.0.36
@@ -15,10 +18,10 @@ alembic==1.14.0
 pgvector==0.3.6
 
 # Cache
-redis[hiredis]==5.2.0
+redis[hiredis]>=5.2.1,<6.0.0
 
 # Auth
-python-jose[cryptography]==3.3.0
+PyJWT>=2.8.0,<3.0.0
 bcrypt==4.2.1
 passlib[bcrypt]==1.7.4
 

@@ -3,7 +3,8 @@ import json
 import uuid
 
 from fastapi import WebSocket, WebSocketDisconnect
-from jose import JWTError, jwt
+import jwt as _jwt
+from jwt.exceptions import PyJWTError as JWTError
 import os
 
 from src.application.conversation_service import ConversationApplicationService
@@ -17,7 +18,7 @@ async def conversation_ws_endpoint(
 ):
     # Authenticate via token query param (WebSocket can't set Authorization header)
     try:
-        payload = jwt.decode(token, os.environ["JWT_SECRET_KEY"], algorithms=["HS256"])
+        payload = _jwt.decode(token, os.environ["JWT_SECRET_KEY"], algorithms=["HS256"])
         user_id = uuid.UUID(payload["sub"])
         user_role = payload.get("role", "staff")
     except (JWTError, KeyError, ValueError):

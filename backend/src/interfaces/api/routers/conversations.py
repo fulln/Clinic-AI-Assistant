@@ -10,6 +10,7 @@ from src.domains.audit.services import AuditService
 from src.infrastructure.db.repositories.audit_repo import AuditRepository
 from src.infrastructure.db.repositories.agent_repo import AgentRepository
 from src.infrastructure.db.repositories.conversation_repo import ConversationRepository
+from src.infrastructure.db.repositories.rag_repo import KnowledgeBaseRepository
 from src.interfaces.api.dependencies import get_current_user, get_db
 from src.interfaces.api.schemas.conversation_schemas import (
     ConversationDetailResponse,
@@ -30,6 +31,7 @@ def _build_service(db: AsyncSession) -> ConversationApplicationService:
     return ConversationApplicationService(
         conv_repo=ConversationRepository(db),
         agent_repo=AgentRepository(db),
+        rag_repo=KnowledgeBaseRepository(db),
         audit=AuditService(AuditRepository(db)),
     )
 

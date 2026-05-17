@@ -90,13 +90,29 @@ async def _vectorize(task, document_id: str) -> None:
                 raise ValueError("Document produced no text chunks")
 
             # ---- Embed ----
-            openai_client = openai.OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+            embedding_api_key = (
+                os.environ.get("EMBEDDING_API_KEY") or os.environ["OPENAI_API_KEY"]
+            )
+            embedding_base_url = (
+                os.environ.get("EMBEDDING_BASE_URL") or os.environ.get("OPENAI_BASE_URL")
+            )
+            embedding_model = os.environ.get("EMBEDDING_MODEL", "text-embedding-3-small")
+            embedding_dimensions = os.environ.get("EMBEDDING_DIMENSIONS")
+            openai_client = openai.OpenAI(
+                api_key=embedding_api_key,
+                base_url=embedding_base_url,
+            )
             doc_chunks: list[DocumentChunk] = []
 
             for i, chunk_text in enumerate(chunks_text):
+                embedding_request = {
+                    "model": embedding_model,
+                    "input": chunk_text,
+                }
+                if embedding_dimensions:
+                    embedding_request["dimensions"] = int(embedding_dimensions)
                 response = openai_client.embeddings.create(
-                    model="text-embedding-3-small",
-                    input=chunk_text,
+                    **embedding_request,
                 )
                 embedding = response.data[0].embedding
                 token_count = len(chunk_text) // 4  # approx

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import math
+import os
 import uuid
 
 
@@ -54,9 +55,16 @@ class VectorSearchService:
         openai_client,
     ) -> list[dict]:
         """Embed *query_text* with OpenAI then run pgvector similarity search."""
+        embedding_model = os.environ.get("EMBEDDING_MODEL", "text-embedding-3-small")
+        embedding_dimensions = os.environ.get("EMBEDDING_DIMENSIONS")
+        embedding_request = {
+            "model": embedding_model,
+            "input": query_text,
+        }
+        if embedding_dimensions:
+            embedding_request["dimensions"] = int(embedding_dimensions)
         response = openai_client.embeddings.create(
-            model="text-embedding-3-small",
-            input=query_text,
+            **embedding_request,
         )
         query_embedding: list[float] = response.data[0].embedding
 

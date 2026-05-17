@@ -198,10 +198,19 @@ class RAGApplicationService:
         if kb.owner_id != owner_id:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="无权操作此知识库")
 
-        openai_client = openai.OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+        embedding_api_key = os.environ.get("EMBEDDING_API_KEY") or os.environ["OPENAI_API_KEY"]
+        embedding_base_url = os.environ.get("EMBEDDING_BASE_URL") or os.environ.get("OPENAI_BASE_URL")
+        embedding_model = os.environ.get("EMBEDDING_MODEL", "text-embedding-3-small")
+        embedding_dimensions = os.environ.get("EMBEDDING_DIMENSIONS")
+        openai_client = openai.OpenAI(api_key=embedding_api_key, base_url=embedding_base_url)
+        embedding_request = {
+            "model": embedding_model,
+            "input": query,
+        }
+        if embedding_dimensions:
+            embedding_request["dimensions"] = int(embedding_dimensions)
         response = openai_client.embeddings.create(
-            model="text-embedding-3-small",
-            input=query,
+            **embedding_request,
         )
         query_embedding: list[float] = response.data[0].embedding
 

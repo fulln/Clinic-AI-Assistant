@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import apiClient from '@/shared/api/client';
-import { useSSEStream } from './useSSEStream';
+import { type StreamProgress, useSSEStream } from './useSSEStream';
 import { ConversationDomainService } from '@/domains/conversation/services';
 import type { Conversation, Message } from '@/domains/conversation/entities';
 
@@ -22,11 +22,14 @@ export function useConversation(initialConversationId?: string) {
     streamingContent: '',
     streamingMessageId: null,
   });
+  const [progressSteps, setProgressSteps] = useState<StreamProgress[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const { stream, abort } = useSSEStream(BASE_URL);
   const conversationIdRef = useRef<string | null>(initialConversationId ?? null);
+  const streamingContentRef = useRef('');
+  const progressStepsRef = useRef<StreamProgress[]>([]);
 
   const createConversation = useCallback(async (agentId?: string) => {
     const { data } = await apiClient.post<Conversation>('/api/v1/conversations', {
@@ -71,27 +74,43 @@ export function useConversation(initialConversationId?: string) {
         hasDisclaimer: false, createdAt: new Date().toISOString(),
       };
       setMessages((prev) => [...prev, userMsg]);
+      streamingContentRef.current = '';
+      progressStepsRef.current = [];
+      setProgressSteps([]);
       setStreaming({ isStreaming: true, streamingContent: '', streamingMessageId: null });
 
       await stream(convId, content, agentId ?? null, ragEnabled ?? null, {
         onStart: (messageId) =>
           setStreaming((s) => ({ ...s, streamingMessageId: messageId })),
-        onToken: (token) =>
-          setStreaming((s) => ({ ...s, streamingContent: s.streamingContent + token })),
+        onToken: (token) => {
+          streamingContentRef.current += token;
+          setStreaming((s) => ({ ...s, streamingContent: s.streamingContent + token }));
+        },
         onDisclaimer: () => {},
+        onProgress: (progress) => {
+          progressStepsRef.current = [...progressStepsRef.current, progress];
+          setProgressSteps(progressStepsRef.current);
+        },
         onEnd: (messageId) => {
-          setStreaming((s) => {
-            const assistantMsg: Message = {
-              id: messageId, role: 'assistant', content: s.streamingContent,
-              hasDisclaimer: s.streamingContent.includes('本内容仅供辅助参考'),
-              createdAt: new Date().toISOString(),
-            };
-            setMessages((prev) => [...prev, assistantMsg]);
-            return { isStreaming: false, streamingContent: '', streamingMessageId: null };
+          const content = streamingContentRef.current;
+          const assistantMsg: Message = {
+            id: messageId, role: 'assistant', content,
+            hasDisclaimer: content.includes('本内容仅供辅助参考'),
+            createdAt: new Date().toISOString(),
+            progressSteps: progressStepsRef.current,
+          };
+          setMessages((prev) => {
+            if (prev.some((msg) => msg.id === messageId)) return prev;
+            return [...prev, assistantMsg];
           });
+          streamingContentRef.current = '';
+          progressStepsRef.current = [];
+          setStreaming({ isStreaming: false, streamingContent: '', streamingMessageId: null });
         },
         onError: (code, message) => {
           setError(message);
+          progressStepsRef.current = [];
+          setProgressSteps([]);
           setStreaming({ isStreaming: false, streamingContent: '', streamingMessageId: null });
         },
       });
@@ -111,5 +130,16 @@ export function useConversation(initialConversationId?: string) {
     if (initialConversationId) loadConversation(initialConversationId);
   }, [initialConversationId, loadConversation]);
 
-  return { conversation, messages, streaming, error, loading, sendMessage, switchAgent, abort, createConversation };
+  return {
+    conversation,
+    messages,
+    streaming,
+    progressSteps,
+    error,
+    loading,
+    sendMessage,
+    switchAgent,
+    abort,
+    createConversation,
+  };
 }

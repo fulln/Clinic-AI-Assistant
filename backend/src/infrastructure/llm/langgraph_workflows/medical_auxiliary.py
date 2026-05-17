@@ -26,7 +26,7 @@ class MedicalAuxiliaryWorkflow:
         state = await intent_classifier(state)
 
         if state["refused"]:
-            yield f"data: {state['refusal_reason']}\n\n"
+            yield state["refusal_reason"]
             return
 
         messages = [{"role": "system", "content": SYSTEM_PROMPT}] + state["messages"]

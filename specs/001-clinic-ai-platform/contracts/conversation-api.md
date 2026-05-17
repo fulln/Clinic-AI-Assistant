@@ -14,7 +14,8 @@ Create a new conversation session.
 ```json
 {
   "title": "string (optional, auto-generated from first message if omitted)",
-  "agent_id": "uuid (optional, sets active agent for the session)"
+  "agent_id": "uuid (optional, sets active agent for the session)",
+  "locale": "zh-CN | en-US (optional, default: zh-CN)"
 }
 ```
 
@@ -27,6 +28,7 @@ Create a new conversation session.
   "session_id": "uuid",
   "active_agent_id": "uuid | null",
   "rag_enabled": false,
+  "locale": "zh-CN",
   "created_at": "2026-05-17T10:00:00Z"
 }
 ```
@@ -71,7 +73,8 @@ Get conversation detail with message history.
   "session": {
     "id": "uuid",
     "active_agent_id": "uuid | null",
-    "rag_enabled": false
+    "rag_enabled": false,
+    "locale": "zh-CN"
   },
   "messages": [
     {
@@ -80,7 +83,10 @@ Get conversation detail with message history.
       "content": "string",
       "agent_id": "uuid | null",
       "has_disclaimer": false,
-      "created_at": "2026-05-17T10:00:00Z"
+      "created_at": "2026-05-17T10:00:00Z",
+      "metadata": {
+        "locale": "zh-CN"
+      }
     }
   ]
 }
@@ -97,7 +103,8 @@ Send a message and receive streaming AI response via SSE.
 {
   "content": "string (required, max 4000 chars)",
   "agent_id": "uuid (optional, overrides session active agent for this message)",
-  "rag_enabled": "bool (optional, doctor role only)"
+  "rag_enabled": "bool (optional, doctor role only)",
+  "locale": "zh-CN | en-US (optional, overrides and persists session locale for this message)"
 }
 ```
 
@@ -106,22 +113,25 @@ Send a message and receive streaming AI response via SSE.
 SSE event stream:
 ```
 event: start
-data: {"message_id": "uuid", "agent_id": "uuid", "session_id": "uuid"}
+data: {"message_id": "uuid", "agent_id": "uuid", "session_id": "uuid", "locale": "en-US"}
 
 event: token
-data: {"token": "本次"}
+data: {"token": "For "}
 
 event: token
-data: {"token": "就诊"}
+data: {"token": "this visit"}
+
+event: progress
+data: {"stage": "routing", "message": "Supervisor is selecting the best agent", "locale": "en-US"}
 
 event: disclaimer
-data: {"text": "本内容仅供辅助参考，不构成医疗诊断或治疗建议，请遵医嘱。"}
+data: {"text": "This content is for auxiliary reference only and does not constitute medical diagnosis or treatment advice. Please follow a licensed physician's guidance.", "locale": "en-US"}
 
 event: end
-data: {"message_id": "uuid", "total_tokens": 312, "latency_ms": 1840}
+data: {"message_id": "uuid", "latency_ms": 1840, "locale": "en-US"}
 
 event: error
-data: {"code": "agent_refused", "message": "该请求超出本平台服务范围，请咨询执业医师。"}
+data: {"code": "agent_refused", "message": "This request is outside the platform's service scope. Please consult a licensed physician.", "locale": "en-US"}
 ```
 
 **Response 403** (if user role not in agent's `allowed_roles`):
@@ -144,11 +154,17 @@ Update active session settings (switch agent, toggle RAG).
 ```json
 {
   "active_agent_id": "uuid | null",
-  "rag_enabled": "bool (doctor role only)"
+  "rag_enabled": "bool (doctor role only)",
+  "locale": "zh-CN | en-US"
 }
 ```
 
 **Response 200**: Updated session object.
+
+**Behavior rules**:
+- `locale` on `PATCH /session` updates the session default for all subsequent messages.
+- `locale` on `POST /messages` takes effect immediately and also persists back to the session.
+- Compliance disclaimer, refusal copy, progress messages, and backend-generated errors MUST use the effective locale.
 
 ---
 

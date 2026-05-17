@@ -15,7 +15,7 @@ interface ConversationPanelProps {
 export function ConversationPanel({ agentId: initialAgentId, conversationId }: ConversationPanelProps) {
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(initialAgentId ?? null);
 
-  const { messages, streaming, error, sendMessage, switchAgent } = useConversation(conversationId);
+  const { messages, streaming, progressSteps, error, sendMessage, switchAgent } = useConversation(conversationId);
 
   const handleAgentChange = async (id: string) => {
     setSelectedAgentId(id);
@@ -41,6 +41,7 @@ export function ConversationPanel({ agentId: initialAgentId, conversationId }: C
         messages={messages}
         streamingContent={streaming.isStreaming ? streaming.streamingContent : undefined}
         isStreaming={streaming.isStreaming}
+        progressSteps={progressSteps}
       />
 
       {error && (

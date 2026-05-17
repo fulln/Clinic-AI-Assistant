@@ -5,9 +5,29 @@ import { useCallback, useRef } from 'react';
 interface SSECallbacks {
   onToken: (token: string) => void;
   onDisclaimer: (text: string) => void;
+  onProgress: (progress: StreamProgress) => void;
   onEnd: (messageId: string, latencyMs: number) => void;
   onError: (code: string, message: string) => void;
   onStart: (messageId: string, agentId: string | null) => void;
+}
+
+export interface StreamProgress {
+  stage: string;
+  message: string;
+  agent_id?: string | null;
+  agent_name?: string | null;
+  workflow_type?: string | null;
+  artifacts?: StreamProgressArtifact[];
+}
+
+export interface StreamProgressArtifact {
+  type: string;
+  title: string;
+  subtitle?: string | null;
+  score?: number | null;
+  content: string;
+  document_id?: string | null;
+  chunk_id?: string | null;
 }
 
 export function useSSEStream(baseUrl: string) {
@@ -76,6 +96,7 @@ export function useSSEStream(baseUrl: string) {
               const parsed = JSON.parse(data);
               if (eventType === 'start') callbacks.onStart(parsed.message_id, parsed.agent_id);
               else if (eventType === 'token') callbacks.onToken(parsed.token);
+              else if (eventType === 'progress') callbacks.onProgress(parsed);
               else if (eventType === 'disclaimer') callbacks.onDisclaimer(parsed.text);
               else if (eventType === 'end') callbacks.onEnd(parsed.message_id, parsed.latency_ms);
               else if (eventType === 'error') callbacks.onError(parsed.code, parsed.message);

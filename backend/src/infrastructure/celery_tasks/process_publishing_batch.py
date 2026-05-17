@@ -1,4 +1,5 @@
 import asyncio
+import os
 import uuid
 
 from src.infrastructure.celery_app import celery_app
@@ -9,33 +10,46 @@ def process_publishing_batch(self, batch_id: str) -> dict:
     """Celery task: process a publishing batch by ID."""
 
     async def _run():
-        from src.interfaces.api.dependencies import AsyncSessionLocal
+        from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+
         from src.domains.publishing.services import BatchPublishingService
         from src.infrastructure.db.repositories.agent_repo import AgentRepository
         from src.infrastructure.db.repositories.publishing_repo import PublishingRepository
 
-        async with AsyncSessionLocal() as session:
-            try:
-                agent_repo = AgentRepository(session)
-                publishing_repo = PublishingRepository(session)
-                svc = BatchPublishingService(
-                    agent_repo=agent_repo,
-                    publishing_repo=publishing_repo,
-                )
-                batch = await svc.process_batch(
-                    batch_id=uuid.UUID(batch_id),
-                    items=[],  # items already persisted from submit_batch
-                )
-                await session.commit()
-                return {
-                    "batch_id": str(batch.id),
-                    "status": batch.status.value,
-                    "success_count": batch.success_count,
-                    "failure_count": batch.failure_count,
-                }
-            except Exception:
-                await session.rollback()
-                raise
+        database_url = (
+            f"postgresql+asyncpg://"
+            f"{os.environ['POSTGRES_USER']}:{os.environ['POSTGRES_PASSWORD']}"
+            f"@{os.environ.get('POSTGRES_HOST', 'localhost')}:{os.environ.get('POSTGRES_PORT', '5432')}"
+            f"/{os.environ['POSTGRES_DB']}"
+        )
+        engine = create_async_engine(database_url, pool_pre_ping=True)
+        session_local = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+
+        try:
+            async with session_local() as session:
+                try:
+                    agent_repo = AgentRepository(session)
+                    publishing_repo = PublishingRepository(session)
+                    svc = BatchPublishingService(
+                        agent_repo=agent_repo,
+                        publishing_repo=publishing_repo,
+                    )
+                    batch = await svc.process_batch(
+                        batch_id=uuid.UUID(batch_id),
+                        items=[],  # items already persisted from submit_batch
+                    )
+                    await session.commit()
+                    return {
+                        "batch_id": str(batch.id),
+                        "status": batch.status.value,
+                        "success_count": batch.success_count,
+                        "failure_count": batch.failure_count,
+                    }
+                except Exception:
+                    await session.rollback()
+                    raise
+        finally:
+            await engine.dispose()
 
     try:
         return asyncio.run(_run())

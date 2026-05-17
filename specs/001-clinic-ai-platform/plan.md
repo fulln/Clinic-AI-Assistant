@@ -11,6 +11,9 @@
 和统一会话上下文管理。前后端均遵循 DDD（领域驱动设计）分层架构，数据层使用 PostgreSQL + pgvector
 做向量化存储，Redis 做缓存与会话状态管理，全套基础设施通过 Docker Compose 部署。
 
+本轮补充要求是在统一会话体系上增加国际化能力，且语言切换不仅影响页面文案，还必须成为 AI 回复语言、
+免责声明语言、错误提示语言和工作流进度文案的统一来源。
+
 ## Technical Context
 
 **Language/Version**:
@@ -19,7 +22,8 @@
 
 **Primary Dependencies**:
 - Backend: FastAPI, LangChain, LangGraph, SQLAlchemy 2.x, Alembic, Pydantic v2, python-jose (JWT), bcrypt, celery (async doc processing)
-- Frontend: Next.js 14, React 18, TailwindCSS, shadcn/ui, Zustand (state), react-query
+- Frontend: Next.js 14, React 18, TailwindCSS
+- I18n strategy: repository-local translation dictionaries + session-level locale propagation; avoid adding a new i18n dependency unless routing/SSR complexity later proves it necessary
 
 **Storage**:
 - Primary DB: PostgreSQL 16 + pgvector extension (Docker: `pgvector/pgvector:pg16`)
@@ -29,6 +33,7 @@
 **Testing**:
 - Backend: pytest + pytest-asyncio + httpx (async test client)
 - Frontend: Jest + React Testing Library + Playwright (E2E)
+- I18n verification: locale-switch integration tests for session API, SSE events, disclaimer rendering, and AI response language instructions
 
 **Target Platform**: Docker Compose (single-host Linux/macOS); all services containerized.
 
@@ -39,17 +44,20 @@
 - AI first-token response: p95 < 3s
 - Document vectorization: < 60s for documents < 10MB
 - Batch agent publish (15 agents): < 30s total
+- Locale switch should not add an extra round-trip before send-message on the happy path
 
 **Constraints**:
 - All patient-adjacent data encrypted at rest and in transit (AES-256 / TLS 1.2+)
 - Audit logs append-only; retained ≥ 5 years
 - Max concurrent users: 50 (single-clinic scale)
 - LLM via external API (OpenAI-compatible); no self-hosted model
+- Locale handling must be deterministic: same session locale drives UI labels, AI final answer, disclaimer, refusal copy, and progress messages
 
 **Scale/Scope**:
 - 5 formal agents + 10 demo agents = 15 agents total
 - 4 frontend showcase agents (subset of the 15)
 - Max ~200 registered users per deployment
+- Initial supported locales: `zh-CN`, `en-US`
 - Estimated DB size: < 50GB including vector embeddings
 
 ## Constitution Check
@@ -58,11 +66,11 @@
 
 | # | Principle | Check | Status |
 |---|-----------|-------|--------|
-| I | Medical Safety First | All AI endpoints inject disclaimer; intent classifier node rejects diagnostic/prescription requests; test suite covers refusal behavior | ✅ PASS |
-| II | Patient Data Privacy | PII encrypted at rest (PostgreSQL column encryption + AES-256 at volume level); logs anonymized (IP last octet zeroed); JWT in httpOnly cookies; audit log redaction on message delete | ✅ PASS |
-| III | Strict Service Scope | Platform covers exactly 4 permitted categories: auxiliary dialogue, document organization, operations consulting, health science popularization; spec gate reviewed | ✅ PASS |
-| IV | Human-in-the-Loop | Doctor must review and approve AI-drafted documents before delivery; WebSocket protocol supports `tool_request`/`approve_tool` flow; no auto-send to patients | ✅ PASS |
-| V | Auditability & Observability | AuditLog entity defined (append-only, 5-year retention); all 13 action types logged; health metrics endpoint exposed; Redis-backed context + PostgreSQL audit trail | ✅ PASS |
+| I | Medical Safety First | All localized AI endpoints must inject the disclaimer in the active locale; refusal logic remains language-independent and still blocks diagnostic/prescription requests | ✅ PASS |
+| II | Patient Data Privacy | Locale preference is low-sensitivity product metadata; no new patient-data exposure path is introduced | ✅ PASS |
+| III | Strict Service Scope | Internationalization changes only the presentation and generation language of allowed assistance features; it does not expand service scope | ✅ PASS |
+| IV | Human-in-the-Loop | Locale switching does not bypass physician review requirements for clinical-adjacent output | ✅ PASS |
+| V | Auditability & Observability | Session update and message logs should capture effective locale so reply-language behavior is auditable | ✅ PASS |
 
 **Post-Design Re-check**: ✅ All gates passed after Phase 1. No constitution violations.
 
@@ -90,185 +98,56 @@ specs/001-clinic-ai-platform/
 ```text
 backend/
 ├── src/
-│   ├── domains/                        # DDD Domain Layer
+│   ├── domains/
 │   │   ├── auth/
-│   │   │   ├── entities.py             # User entity, UserRole value object
-│   │   │   ├── value_objects.py        # Password, Token value objects
-│   │   │   ├── repository.py           # IUserRepository (abstract port)
-│   │   │   └── services.py             # AuthDomainService
 │   │   ├── agent/
-│   │   │   ├── entities.py             # Agent entity, AgentPublication
-│   │   │   ├── value_objects.py        # AgentConfig, AgentStatus, AgentType
-│   │   │   ├── aggregates.py           # AgentCatalog aggregate root
-│   │   │   ├── repository.py           # IAgentRepository
-│   │   │   └── services.py             # AgentDispatcher, AgentScheduler
 │   │   ├── conversation/
-│   │   │   ├── entities.py             # Conversation, Message entities
-│   │   │   ├── aggregates.py           # ConversationSession aggregate
-│   │   │   ├── value_objects.py        # MessageRole, SessionContext
-│   │   │   ├── repository.py           # IConversationRepository
-│   │   │   └── services.py             # ConversationDomainService
+│   │   │   ├── entities.py             # add locale to ConversationSession / localized disclaimer helpers
+│   │   │   ├── repository.py
+│   │   │   └── services.py
 │   │   ├── rag/
-│   │   │   ├── entities.py             # KnowledgeBase, Document, DocumentChunk
-│   │   │   ├── value_objects.py        # Embedding, ChunkMetadata
-│   │   │   ├── repository.py           # IKnowledgeBaseRepository
-│   │   │   └── services.py             # VectorSearchService, ChunkingService
 │   │   ├── publishing/
-│   │   │   ├── entities.py             # PublishingBatch, PublishingBatchItem
-│   │   │   ├── aggregates.py           # PublishingBatch aggregate root
-│   │   │   ├── repository.py           # IPublishingRepository
-│   │   │   └── services.py             # BatchPublishingService
 │   │   └── audit/
-│   │       ├── entities.py             # AuditLog entity
-│   │       └── services.py             # AuditService (cross-cutting)
-│   ├── application/                    # DDD Application Layer (use cases)
-│   │   ├── auth_service.py             # Login, logout, token refresh
-│   │   ├── agent_service.py            # CRUD + publish + dispatch
-│   │   ├── conversation_service.py     # Session management, message flow
-│   │   ├── rag_service.py              # KB management, doc upload, query
-│   │   └── publishing_service.py       # Batch publish orchestration
-│   ├── infrastructure/                 # DDD Infrastructure Layer (adapters)
+│   ├── application/
+│   │   └── conversation_service.py     # propagate locale into routing, progress text, supervisor prompt, fallback copy
+│   ├── infrastructure/
 │   │   ├── db/
-│   │   │   ├── models.py               # SQLAlchemy ORM models
-│   │   │   ├── repositories/           # Concrete repository implementations
-│   │   │   │   ├── user_repo.py
-│   │   │   │   ├── agent_repo.py
-│   │   │   │   ├── conversation_repo.py
-│   │   │   │   ├── rag_repo.py
-│   │   │   │   └── audit_repo.py
-│   │   │   └── migrations/             # Alembic migration files
-│   │   ├── cache/
-│   │   │   └── redis_client.py         # Redis connection + key helpers
+│   │   │   ├── models.py               # persist session locale
+│   │   │   ├── repositories/
+│   │   │   │   └── conversation_repo.py
+│   │   │   └── migrations/
 │   │   ├── llm/
-│   │   │   ├── langchain_adapter.py    # LLM client wrapper
-│   │   │   ├── langgraph_workflows/    # Agent StateGraph definitions
-│   │   │   │   ├── base_workflow.py    # Shared nodes (context_loader, disclaimer, safety_check)
-│   │   │   │   ├── medical_auxiliary.py
-│   │   │   │   ├── document_organizer.py
-│   │   │   │   ├── operations_consultant.py
-│   │   │   │   ├── health_educator.py
-│   │   │   │   └── rag_qa.py
-│   │   │   └── checkpointer.py         # Redis-based LangGraph checkpointer
-│   │   ├── vector_store/
-│   │   │   └── pgvector_adapter.py     # pgvector HNSW similarity search
-│   │   └── storage/
-│   │       └── file_storage.py         # Document file upload adapter
-│   └── interfaces/                     # DDD Interface Layer
+│   │   │   ├── langchain_adapter.py
+│   │   │   └── langgraph_workflows/    # localized system prompts and disclaimer injection
+│   │   └── cache/
+│   └── interfaces/
 │       └── api/
-│           ├── main.py                 # FastAPI app factory
-│           ├── dependencies.py         # Auth middleware, DB session injection
-│           ├── routers/
-│           │   ├── auth.py
-│           │   ├── agents.py
-│           │   ├── conversations.py
-│           │   └── rag.py
-│           ├── schemas/                # Pydantic request/response schemas
-│           │   ├── auth_schemas.py
-│           │   ├── agent_schemas.py
-│           │   ├── conversation_schemas.py
-│           │   └── rag_schemas.py
-│           └── websocket/
-│               └── conversation_ws.py  # WebSocket handler
+│           ├── routers/conversations.py
+│           └── schemas/conversation_schemas.py
 ├── tests/
-│   ├── domain/                         # Pure domain unit tests (no DB)
-│   ├── application/                    # Application service tests (mocked infra)
-│   └── integration/                    # Full stack integration tests (real DB)
-├── scripts/
-│   ├── seed_admin.py
-│   └── seed_agents.py
-├── config/
-│   └── agents/
-│       ├── formal_agents.json
-│       └── demo_agents.json
-├── alembic.ini
-├── requirements.txt
-└── Dockerfile
+│   ├── domain/
+│   ├── application/
+│   └── integration/
+└── ...
 
 frontend/
 ├── src/
-│   ├── app/                            # Next.js App Router (Interface Layer)
-│   │   ├── (auth)/
-│   │   │   ├── login/
-│   │   │   │   └── page.tsx
-│   │   │   └── layout.tsx
-│   │   ├── (dashboard)/
-│   │   │   ├── agents/
-│   │   │   │   ├── page.tsx            # Agent catalog
-│   │   │   │   └── [agentId]/page.tsx  # Agent detail + demo entry
-│   │   │   ├── conversation/
-│   │   │   │   └── page.tsx            # Unified conversation UI
-│   │   │   ├── rag/
-│   │   │   │   └── page.tsx            # Doctor RAG management (doctor role only)
-│   │   │   └── layout.tsx
-│   │   ├── layout.tsx
-│   │   └── middleware.ts               # Route protection by role
-│   ├── domains/                        # DDD Domain Layer (frontend)
-│   │   ├── auth/
-│   │   │   ├── entities.ts             # User entity, UserRole type
-│   │   │   └── services.ts             # AuthDomainService (validation rules)
-│   │   ├── agent/
-│   │   │   ├── entities.ts             # Agent entity
-│   │   │   └── services.ts
-│   │   ├── conversation/
-│   │   │   ├── entities.ts             # Conversation, Message, Session
-│   │   │   └── services.ts
-│   │   └── rag/
-│   │       ├── entities.ts             # KnowledgeBase, Document
-│   │       └── services.ts
-│   ├── features/                       # DDD Bounded Context modules
-│   │   ├── auth/
-│   │   │   ├── components/
-│   │   │   │   └── LoginForm.tsx
-│   │   │   └── hooks/
-│   │   │       └── useAuth.ts
-│   │   ├── agent-catalog/
-│   │   │   ├── components/
-│   │   │   │   ├── AgentCard.tsx
-│   │   │   │   ├── AgentList.tsx
-│   │   │   │   └── AgentTypeBadge.tsx
-│   │   │   └── hooks/
-│   │   │       └── useAgents.ts
-│   │   ├── conversation/               # Unified conversation component (shared by all agents)
-│   │   │   ├── components/
-│   │   │   │   ├── ConversationPanel.tsx   # Root component (used by all agent UIs)
-│   │   │   │   ├── MessageList.tsx
-│   │   │   │   ├── MessageInput.tsx
-│   │   │   │   ├── AgentSelector.tsx
-│   │   │   │   ├── DisclaimerBanner.tsx
-│   │   │   │   └── StreamingMessage.tsx    # SSE token-by-token rendering
-│   │   │   └── hooks/
-│   │   │       ├── useConversation.ts
-│   │   │       └── useSSEStream.ts
-│   │   └── rag/
-│   │       ├── components/
-│   │       │   ├── KnowledgeBaseList.tsx
-│   │       │   ├── DocumentUploader.tsx
-│   │       │   └── DocumentStatusBadge.tsx
-│   │       └── hooks/
-│   │           └── useKnowledgeBase.ts
-│   ├── shared/
-│   │   ├── components/
-│   │   │   ├── Button.tsx
-│   │   │   ├── Modal.tsx
-│   │   │   └── LoadingSpinner.tsx
-│   │   ├── api/
-│   │   │   └── client.ts               # Axios/fetch wrapper with auth headers
-│   │   └── store/
-│   │       └── authStore.ts            # Zustand: user session state
-├── tests/
-│   ├── unit/
-│   └── e2e/                            # Playwright E2E tests
-├── next.config.ts
-├── tailwind.config.ts
-├── tsconfig.json
-└── Dockerfile
-
-docker-compose.yml
-docker-compose.dev.yml
-.env.example
+│   ├── app/
+│   ├── domains/
+│   │   └── conversation/entities.ts    # session locale typing
+│   ├── features/
+│   │   └── conversation/
+│   │       ├── hooks/
+│   │       │   ├── useConversation.ts  # read/update locale, pass through send flow
+│   │       │   └── useSSEStream.ts     # consume localized disclaimer / progress / error events
+│   │       └── components/             # localized input placeholder / disclaimer banner / language switcher
+│   └── shared/
+│       ├── api/client.ts
+│       └── i18n/                       # lightweight locale dictionaries and helpers
+└── ...
 ```
 
-**Structure Decision**: Web application option (frontend + backend separation) selected. Both sub-projects follow DDD with Hexagonal Architecture: domain → application → infrastructure → interface. Frontend uses Next.js App Router as the interface layer with DDD feature modules as bounded contexts. The `features/conversation/` module is the single unified conversation component consumed by all agent UIs.
+**Structure Decision**: 保持现有前后端分离 DDD 结构不变，只在 `conversation` 边界上下游补充 locale 透传，并在 frontend `shared/i18n` 建立轻量字典层，避免为了中英双语先引入新的框架级依赖。
 
 ## Complexity Tracking
 
@@ -276,6 +155,7 @@ docker-compose.dev.yml
 
 | Design Choice | Justification |
 |---------------|---------------|
-| LangGraph for all agents (not just complex ones) | Uniformity: all agents share the same base workflow nodes (safety_check, disclaimer, context_loader); simpler to maintain 15 agents with one framework |
-| Redis + PostgreSQL dual storage for conversation context | Constitution Principle V requires durable audit trail (PostgreSQL); UX requires low-latency context reads during streaming (Redis). Both are needed. |
-| Celery for async document processing | Document vectorization can take 10-60s; must not block the HTTP request lifecycle. Celery + Redis as broker is Docker-native and fits the existing stack. |
+| Session-level locale as source of truth | 用户可在同一账号下并行打开不同语言会话，且 AI 回复语言必须和当前会话保持一致；仅做全局页面语言无法满足会话级 AI 语言控制 |
+| Localized disclaimer catalog instead of free-form model generation | 合规免责声明必须 100% 准确且可测试，不能交给模型自行翻译 |
+| Prompt-level locale control plus SSE locale metadata | 同时覆盖主控 agent、子 agent、错误提示和流式 UI 渲染，避免只有最终回答变英文而过程文案仍是中文 |
+| Reuse local dictionaries before adding next-intl | 当前需求集中在仪表盘应用与会话模块，先用轻量方案控制改动面和依赖面 |

@@ -3,7 +3,8 @@ from typing import AsyncGenerator
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from jose import JWTError, jwt
+import jwt as _jwt
+from jwt.exceptions import PyJWTError as JWTError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from src.infrastructure.db.models import UserModel, UserRole
@@ -39,7 +40,7 @@ async def get_current_user(
     token = credentials.credentials
     secret = os.environ["JWT_SECRET_KEY"]
     try:
-        payload = jwt.decode(token, secret, algorithms=["HS256"])
+        payload = _jwt.decode(token, secret, algorithms=["HS256"])
     except JWTError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 

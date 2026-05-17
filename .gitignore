@@ -44,3 +44,4 @@ logs/
 
 # Breacher
 .breacher/
+.breacher/plugin.toml

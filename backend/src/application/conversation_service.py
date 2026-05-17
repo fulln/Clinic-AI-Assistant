@@ -36,6 +36,8 @@ class OrchestraStep:
 
 
 class ConversationApplicationService:
+    RAG_SCORE_THRESHOLD = 0.5
+
     def __init__(
         self,
         conv_repo: IConversationRepository,
@@ -545,9 +547,11 @@ class ConversationApplicationService:
                 top_k=per_kb_limit,
             )
             for result in results:
+                if float(result.get("similarity_score", 0)) <= self.RAG_SCORE_THRESHOLD:
+                    continue
                 result["knowledge_base_id"] = str(kb.id)
                 result["knowledge_base_name"] = kb.name
-            all_results.extend(results)
+                all_results.append(result)
 
         all_results.sort(key=lambda item: item["similarity_score"], reverse=True)
         return all_results[:top_k]

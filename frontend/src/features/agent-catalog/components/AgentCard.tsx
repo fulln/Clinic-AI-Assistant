@@ -13,20 +13,20 @@ export function AgentCard({ agent, locale }: AgentCardProps) {
   const copy = getSiteCopy(locale);
 
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition hover:shadow-md">
+    <div className="group flex h-full flex-col gap-4 rounded-[1.5rem] border border-white/80 bg-white/90 p-6 shadow-[0_18px_50px_rgba(15,23,42,0.08)] transition duration-200 hover:-translate-y-1 hover:shadow-[0_24px_70px_rgba(15,23,42,0.12)]">
       <div className="flex items-start justify-between gap-2">
-        <h3 className="text-base font-semibold text-gray-900 leading-snug">{agent.name}</h3>
+        <h3 className="text-lg font-semibold leading-snug text-slate-900">{agent.name}</h3>
         <AgentTypeBadge agentType={agent.agentType} locale={locale} />
       </div>
 
-      <p className="line-clamp-2 text-sm text-gray-500">{agent.description}</p>
+      <p className="line-clamp-3 text-sm leading-6 text-slate-500">{agent.description}</p>
 
       {agent.capabilities.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {agent.capabilities.map((cap) => (
             <span
               key={cap}
-              className="inline-block rounded-md bg-gray-100 px-2 py-0.5 text-xs text-gray-600"
+              className="inline-block rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600"
             >
               {cap}
             </span>
@@ -38,7 +38,7 @@ export function AgentCard({ agent, locale }: AgentCardProps) {
         <div className="mt-auto pt-2">
           <Link
             href={`/agents/${agent.id}`}
-            className="inline-flex items-center rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-1"
+            className="inline-flex items-center rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-1"
           >
             {copy.agentsDemoEnter}
           </Link>

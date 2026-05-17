@@ -53,9 +53,9 @@ export function ConversationPanel({ agentId: initialAgentId, conversationId }: C
   }, [locale, siteLocale, streaming.isStreaming, switchLocale]);
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex items-center gap-3 border-b border-gray-200 bg-white px-4 py-3">
-        <span className="text-sm font-medium text-gray-700">{copy.currentAgent}</span>
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex items-center gap-3 border-b border-slate-200 bg-white/80 px-5 py-4">
+        <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{copy.currentAgent}</span>
         <AgentSelector
           value={selectedAgentId}
           onChange={handleAgentChange}
@@ -73,7 +73,7 @@ export function ConversationPanel({ agentId: initialAgentId, conversationId }: C
       />
 
       {error && (
-        <div className="mx-4 mb-2 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">
+        <div className="mx-5 mb-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700">
           {error}
         </div>
       )}

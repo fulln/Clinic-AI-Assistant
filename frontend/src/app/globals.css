@@ -4,22 +4,22 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
+    --background: 210 33% 98%;
+    --foreground: 222 47% 11%;
+    --primary: 223 79% 56%;
     --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
+    --secondary: 216 33% 96%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 220 25% 95%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 212 100% 97%;
+    --accent-foreground: 223 79% 40%;
+    --destructive: 0 72% 56%;
     --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
-    --radius: 0.5rem;
+    --border: 218 24% 89%;
+    --input: 218 24% 89%;
+    --ring: 223 79% 56%;
+    --radius: 1rem;
   }
 }
 
@@ -27,7 +27,58 @@
   * {
     @apply border-border;
   }
+
+  html {
+    @apply h-full scroll-smooth;
+  }
+
   body {
-    @apply bg-background text-foreground;
+    @apply min-h-full bg-background text-foreground antialiased;
+    background-image:
+      radial-gradient(circle at top left, rgba(88, 118, 255, 0.16), transparent 28%),
+      radial-gradient(circle at top right, rgba(56, 189, 248, 0.10), transparent 24%),
+      linear-gradient(180deg, #f7faff 0%, #f5f7fb 55%, #f8fafc 100%);
+  }
+}
+
+@layer components {
+  .app-shell {
+    @apply min-h-screen bg-transparent;
+  }
+
+  .saas-sidebar {
+    @apply border-r border-white backdrop-blur-xl;
+    background-color: rgba(255, 255, 255, 0.82);
+    border-right-color: rgba(255, 255, 255, 0.6);
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.55), 0 20px 60px rgba(15, 23, 42, 0.06);
+  }
+
+  .saas-panel {
+    @apply rounded-3xl border border-white bg-white backdrop-blur-xl shadow-[0_20px_70px_rgba(15,23,42,0.08)];
+    background-color: rgba(255, 255, 255, 0.88);
+    border-color: rgba(255, 255, 255, 0.7);
+  }
+
+  .saas-muted-panel {
+    @apply rounded-2xl border border-slate-200 bg-slate-50;
+    border-color: rgba(226, 232, 240, 0.8);
+    background-color: rgba(248, 250, 252, 0.85);
+  }
+
+  .saas-pill {
+    @apply inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600;
+    background-color: rgba(255, 255, 255, 0.9);
+  }
+
+  .saas-nav-item {
+    @apply flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-medium text-slate-600 transition duration-200 hover:text-slate-900;
+  }
+
+  .saas-nav-item:hover {
+    background-color: rgba(241, 245, 249, 0.9);
+  }
+
+  .saas-nav-item-active {
+    @apply bg-slate-900 text-white shadow-[0_12px_30px_rgba(15,23,42,0.18)] hover:bg-slate-900 hover:text-white;
   }
 }

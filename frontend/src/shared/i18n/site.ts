@@ -14,6 +14,28 @@ type SiteDictionary = {
   roleDoctor: string;
   roleAdmin: string;
   roleStaff: string;
+  landingEyebrow: string;
+  landingTitle: string;
+  landingBody: string;
+  landingPrimaryCta: string;
+  landingSecondaryCta: string;
+  landingCardOneTitle: string;
+  landingCardOneBody: string;
+  landingCardTwoTitle: string;
+  landingCardTwoBody: string;
+  landingCardThreeTitle: string;
+  landingCardThreeBody: string;
+  landingCardFourTitle: string;
+  landingCardFourBody: string;
+  landingFlowTitle: string;
+  landingFlowOneTitle: string;
+  landingFlowOneBody: string;
+  landingFlowTwoTitle: string;
+  landingFlowTwoBody: string;
+  landingFlowThreeTitle: string;
+  landingFlowThreeBody: string;
+  landingFlowFourTitle: string;
+  landingFlowFourBody: string;
   navConversation: string;
   navAgents: string;
   navAgentManagement: string;
@@ -27,6 +49,12 @@ type SiteDictionary = {
   authLogin: string;
   authLoggingIn: string;
   authLoginFailed: string;
+  authMarketingEyebrow: string;
+  authMarketingTitle: string;
+  authMarketingBody: string;
+  authFeatureOne: string;
+  authFeatureTwo: string;
+  authFeatureThree: string;
   authUsernameRequired: string;
   authUsernameMin: string;
   authPasswordRequired: string;
@@ -55,6 +83,25 @@ type SiteDictionary = {
   agentsAllowedRoles: string;
   agentsManagementForbidden: string;
   agentsActionFailed: string;
+  dashboardOverview: string;
+  dashboardWorkspaceStatus: string;
+  dashboardWorkspaceHealthy: string;
+  dashboardSubtitleConversation: string;
+  dashboardSubtitleAgents: string;
+  dashboardSubtitleAgentManagement: string;
+  dashboardSubtitleKnowledgeBase: string;
+  dashboardConversationPatternTitle: string;
+  dashboardConversationPatternLabel: string;
+  dashboardConversationPatternBody: string;
+  dashboardConversationPatternIncluded: string;
+  dashboardConversationPatternPointOne: string;
+  dashboardConversationPatternPointTwo: string;
+  dashboardConversationPatternPointThree: string;
+  agentsTableName: string;
+  agentsTableSlug: string;
+  agentsTableType: string;
+  agentsTableStatus: string;
+  agentsTableVersion: string;
   ragTitle: string;
   ragDoctorOnlyTitle: string;
   ragDoctorOnlySubtitle: string;
@@ -102,6 +149,28 @@ const dictionaries: Record<Locale, SiteDictionary> = {
     roleDoctor: '医师',
     roleAdmin: '管理员',
     roleStaff: '员工',
+    landingEyebrow: 'Clinic AI SaaS Template',
+    landingTitle: '面向私立诊所的标准 SaaS AI 工作台',
+    landingBody: '把患者沟通、智能体协作、知识库检索和管理员治理放进一套统一的 SaaS 网站样板里，既适合演示，也适合继续产品化扩展。',
+    landingPrimaryCta: '进入登录',
+    landingSecondaryCta: '查看工作台',
+    landingCardOneTitle: '统一会话入口',
+    landingCardOneBody: '用户从一个标准化会话面板进入，由前端统一承接输入、流式回复和安全提示。',
+    landingCardTwoTitle: '多智能体协作',
+    landingCardTwoBody: '主控流程会根据问题路由到合适 agent，并把执行轨迹和结果汇总成最终回复。',
+    landingCardThreeTitle: '知识库增强回答',
+    landingCardThreeBody: '医师可上传和维护 RAG 知识库，让回答具备文档上下文和来源基础。',
+    landingCardFourTitle: '管理员治理',
+    landingCardFourBody: '管理员可以管理 agent 生命周期，处理草稿、发布、归档和恢复流程。',
+    landingFlowTitle: '当前系统的工作环节',
+    landingFlowOneTitle: '1. 登录与角色识别',
+    landingFlowOneBody: '根据医师、管理员或员工身份，进入对应功能入口和权限范围。',
+    landingFlowTwoTitle: '2. 发起会话或选择 agent',
+    landingFlowTwoBody: '用户进入会话页，选择智能体或直接输入问题，系统同步站点语言与回复语言。',
+    landingFlowThreeTitle: '3. 编排回答与知识检索',
+    landingFlowThreeBody: '主控 agent 负责路由、调用子 agent、可选地接入知识库，并以流式方式返回内容。',
+    landingFlowFourTitle: '4. 运维与治理',
+    landingFlowFourBody: '管理员和医师分别维护 agent 生命周期与知识库资产，保证工作台持续可用。',
     navConversation: '对话',
     navAgents: '智能体',
     navAgentManagement: 'Agent 管理',
@@ -115,6 +184,12 @@ const dictionaries: Record<Locale, SiteDictionary> = {
     authLogin: '登录',
     authLoggingIn: '登录中...',
     authLoginFailed: '登录失败，请重试',
+    authMarketingEyebrow: 'Clinic AI Workspace',
+    authMarketingTitle: '把临床协作、知识检索和 AI 助手集中到一个标准 SaaS 工作台里',
+    authMarketingBody: '参考 GitHub 上成熟 SaaS 模板的后台结构，统一交互入口、角色权限和内容面板。',
+    authFeatureOne: '面向医师、管理员和员工的角色化工作流',
+    authFeatureTwo: '知识库、智能体与会话在一个空间中联动',
+    authFeatureThree: '统一的后台导航、卡片、表格和操作反馈',
     authUsernameRequired: '请输入用户名',
     authUsernameMin: '用户名至少3个字符',
     authPasswordRequired: '请输入密码',
@@ -143,6 +218,25 @@ const dictionaries: Record<Locale, SiteDictionary> = {
     agentsAllowedRoles: '允许角色',
     agentsManagementForbidden: '仅管理员可访问 Agent 管理。',
     agentsActionFailed: 'Agent 操作失败，请重试。',
+    dashboardOverview: '工作台',
+    dashboardWorkspaceStatus: 'Workspace',
+    dashboardWorkspaceHealthy: 'Operational',
+    dashboardSubtitleConversation: '统一会话、智能体与知识上下文的核心工作区',
+    dashboardSubtitleAgents: '浏览可用智能体，并按任务选择最合适的能力入口',
+    dashboardSubtitleAgentManagement: '管理草稿、已发布与已归档智能体的完整生命周期',
+    dashboardSubtitleKnowledgeBase: '维护医生知识库与上传文档，支撑可追溯的 RAG 回复',
+    dashboardConversationPatternTitle: '标准 SaaS 会话工作区',
+    dashboardConversationPatternLabel: '会话样板',
+    dashboardConversationPatternBody: '会话、智能体路由和知识上下文现在与后台其它模块共享同一套卡片与面板体系。',
+    dashboardConversationPatternIncluded: '包含模块',
+    dashboardConversationPatternPointOne: '固定后台壳与角色化导航',
+    dashboardConversationPatternPointTwo: '统一的卡片、表格和操作反馈样式',
+    dashboardConversationPatternPointThree: '围绕工作流组织的会话与知识区',
+    agentsTableName: '名称',
+    agentsTableSlug: '标识',
+    agentsTableType: '类型',
+    agentsTableStatus: '状态',
+    agentsTableVersion: '版本',
     ragTitle: 'RAG 知识库管理',
     ragDoctorOnlyTitle: '此功能仅限医师使用',
     ragDoctorOnlySubtitle: '请使用医师账号登录后访问。',
@@ -188,6 +282,28 @@ const dictionaries: Record<Locale, SiteDictionary> = {
     roleDoctor: 'Doctor',
     roleAdmin: 'Admin',
     roleStaff: 'Staff',
+    landingEyebrow: 'Clinic AI SaaS Template',
+    landingTitle: 'A standard SaaS AI workspace for private clinics',
+    landingBody: 'Bring patient communication, multi-agent coordination, grounded knowledge retrieval, and admin governance into one coherent SaaS website template built for further productization.',
+    landingPrimaryCta: 'Go to login',
+    landingSecondaryCta: 'Open workspace',
+    landingCardOneTitle: 'Unified conversation entry',
+    landingCardOneBody: 'Users start from one standardized conversation surface with streaming replies and consistent safety framing.',
+    landingCardTwoTitle: 'Multi-agent coordination',
+    landingCardTwoBody: 'A supervisor workflow routes requests to the right agent and synthesizes execution results into one final answer.',
+    landingCardThreeTitle: 'Knowledge-grounded answers',
+    landingCardThreeBody: 'Doctors can maintain a RAG knowledge base so responses stay anchored to uploaded documents and context.',
+    landingCardFourTitle: 'Administrative governance',
+    landingCardFourBody: 'Admins manage the full agent lifecycle across draft, publish, archive, and restore transitions.',
+    landingFlowTitle: 'Current product workflow',
+    landingFlowOneTitle: '1. Sign in and resolve role access',
+    landingFlowOneBody: 'Doctors, admins, and staff enter the workspace with role-specific navigation and permissions.',
+    landingFlowTwoTitle: '2. Start a conversation or pick an agent',
+    landingFlowTwoBody: 'Users enter the conversation workspace, choose an agent when needed, and keep site and response locale aligned.',
+    landingFlowThreeTitle: '3. Orchestrate answers and retrieve knowledge',
+    landingFlowThreeBody: 'The supervisor agent routes work, invokes child agents, optionally retrieves knowledge, and streams the final answer back.',
+    landingFlowFourTitle: '4. Govern the operating system',
+    landingFlowFourBody: 'Admins and doctors manage agent lifecycle and knowledge assets so the workspace stays maintainable.',
     navConversation: 'Conversation',
     navAgents: 'Agents',
     navAgentManagement: 'Agent Management',
@@ -201,6 +317,12 @@ const dictionaries: Record<Locale, SiteDictionary> = {
     authLogin: 'Sign in',
     authLoggingIn: 'Signing in...',
     authLoginFailed: 'Login failed. Please try again.',
+    authMarketingEyebrow: 'Clinic AI Workspace',
+    authMarketingTitle: 'Bring clinical collaboration, grounded knowledge, and AI assistants into one SaaS-style workspace',
+    authMarketingBody: 'Structured after proven GitHub SaaS templates so navigation, permissions, and content surfaces feel consistent.',
+    authFeatureOne: 'Role-aware workflows for doctors, admins, and staff',
+    authFeatureTwo: 'Knowledge, agents, and conversations linked in one workspace',
+    authFeatureThree: 'Unified dashboard patterns for navigation, cards, tables, and actions',
     authUsernameRequired: 'Please enter your username.',
     authUsernameMin: 'Username must be at least 3 characters.',
     authPasswordRequired: 'Please enter your password.',
@@ -229,6 +351,25 @@ const dictionaries: Record<Locale, SiteDictionary> = {
     agentsAllowedRoles: 'Allowed roles',
     agentsManagementForbidden: 'Only admins can access agent management.',
     agentsActionFailed: 'Agent action failed. Please try again.',
+    dashboardOverview: 'Workspace',
+    dashboardWorkspaceStatus: 'Workspace',
+    dashboardWorkspaceHealthy: 'Operational',
+    dashboardSubtitleConversation: 'A unified workspace for conversations, agents, and grounded knowledge context',
+    dashboardSubtitleAgents: 'Browse available agents and pick the right capability for each task',
+    dashboardSubtitleAgentManagement: 'Manage the full lifecycle of draft, published, and archived agents',
+    dashboardSubtitleKnowledgeBase: 'Maintain the doctor knowledge base and uploaded files for grounded RAG replies',
+    dashboardConversationPatternTitle: 'Standard SaaS conversation workspace',
+    dashboardConversationPatternLabel: 'Conversation Pattern',
+    dashboardConversationPatternBody: 'Conversations, agent routing, and grounded knowledge now share the same card and panel system as the rest of the dashboard.',
+    dashboardConversationPatternIncluded: 'Included surfaces',
+    dashboardConversationPatternPointOne: 'Sticky shell with role-aware navigation',
+    dashboardConversationPatternPointTwo: 'Consistent cards, tables, and action feedback',
+    dashboardConversationPatternPointThree: 'Workflow-oriented conversation and knowledge surfaces',
+    agentsTableName: 'Name',
+    agentsTableSlug: 'Slug',
+    agentsTableType: 'Type',
+    agentsTableStatus: 'Status',
+    agentsTableVersion: 'Version',
     ragTitle: 'RAG Knowledge Base Management',
     ragDoctorOnlyTitle: 'This feature is only available to doctors',
     ragDoctorOnlySubtitle: 'Please sign in with a doctor account to continue.',

@@ -39,8 +39,8 @@ export function MessageInput({ onSend, locale, disabled }: MessageInputProps) {
   };
 
   return (
-    <div className="border-t border-gray-200 bg-white px-4 py-3">
-      <div className="flex items-end gap-2 rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 focus-within:border-blue-400 focus-within:ring-1 focus-within:ring-blue-400">
+    <div className="border-t border-slate-200 bg-white/92 px-5 py-4 backdrop-blur">
+      <div className="flex items-end gap-3 rounded-[1.5rem] border border-slate-200 bg-slate-50 px-4 py-3 shadow-inner focus-within:border-blue-400 focus-within:ring-4 focus-within:ring-blue-100">
         <textarea
           ref={textareaRef}
           value={value}
@@ -51,17 +51,17 @@ export function MessageInput({ onSend, locale, disabled }: MessageInputProps) {
           disabled={disabled}
           rows={1}
           maxLength={4000}
-          className="flex-1 resize-none bg-transparent text-sm outline-none placeholder:text-gray-400 disabled:opacity-50"
+          className="flex-1 resize-none bg-transparent text-sm leading-6 text-slate-800 outline-none placeholder:text-slate-400 disabled:opacity-50"
         />
         <button
           onClick={handleSend}
           disabled={disabled || !value.trim()}
-          className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="rounded-2xl bg-slate-900 px-4 py-2 text-xs font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
         >
           {copy.send}
         </button>
       </div>
-      <p className="mt-1 text-right text-xs text-gray-400">{value.length}/4000</p>
+      <p className="mt-2 text-right text-xs text-slate-400">{value.length}/4000</p>
     </div>
   );
 }

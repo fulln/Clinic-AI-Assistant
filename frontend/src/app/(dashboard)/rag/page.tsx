@@ -82,20 +82,25 @@ export default function RagPage() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto py-8 px-4">
-      <h1 className="text-xl font-bold text-gray-900 mb-6">{copy.ragTitle}</h1>
+    <div className="space-y-6">
+      <div className="saas-panel px-6 py-6">
+        <h1 className="text-xl font-bold text-gray-900">{copy.ragTitle}</h1>
+        <p className="mt-2 text-sm leading-6 text-slate-500">{copy.dashboardSubtitleKnowledgeBase}</p>
+      </div>
 
-      <KnowledgeBaseList
-        kbs={kbs}
-        selectedKbId={selectedKbId}
-        documents={documents}
-        onSelectKb={(id) => setSelectedKbId(id === selectedKbId ? null : id)}
-        onCreateKb={() => setShowCreateModal(true)}
-        onDeleteKb={handleDeleteKb}
-        onDeleteDocument={handleDeleteDocument}
-        onUpload={handleUpload}
-        locale={locale}
-      />
+      <div className="saas-panel px-6 py-6">
+        <KnowledgeBaseList
+          kbs={kbs}
+          selectedKbId={selectedKbId}
+          documents={documents}
+          onSelectKb={(id) => setSelectedKbId(id === selectedKbId ? null : id)}
+          onCreateKb={() => setShowCreateModal(true)}
+          onDeleteKb={handleDeleteKb}
+          onDeleteDocument={handleDeleteDocument}
+          onUpload={handleUpload}
+          locale={locale}
+        />
+      </div>
 
       {/* Create KB Modal */}
       {showCreateModal && (

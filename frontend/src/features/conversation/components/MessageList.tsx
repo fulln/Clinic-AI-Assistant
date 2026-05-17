@@ -21,33 +21,46 @@ export function MessageList({
   isStreaming,
   progressSteps = [],
 }: MessageListProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const copy = t(locale);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const container = containerRef.current;
+    if (!container) return;
+
+    const distanceFromBottom =
+      container.scrollHeight - container.scrollTop - container.clientHeight;
+    const shouldStickToBottom = distanceFromBottom < 120;
+
+    if (shouldStickToBottom) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
   }, [messages.length, streamingContent, progressSteps.length]);
 
   if (messages.length === 0 && !isStreaming) {
     return (
-      <div className="flex flex-1 items-center justify-center text-sm text-gray-400">
+      <div className="flex min-h-0 flex-1 items-center justify-center bg-slate-50/45 px-6 text-sm text-gray-400">
         {copy.emptyState}
       </div>
     );
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-4 py-4">
+    <div
+      ref={containerRef}
+      className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto bg-slate-50/45 px-5 py-5"
+    >
       {messages.map((msg) => (
         <div
           key={msg.id}
           className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
         >
           <div
-            className={`max-w-[75%] rounded-xl px-4 py-3 text-sm ${
+            className={`max-w-[78%] rounded-[1.35rem] px-4 py-3 text-sm ${
               msg.role === 'user'
-                ? 'bg-blue-600 text-white'
-                : 'bg-white border border-gray-200 shadow-sm'
+                ? 'bg-slate-900 text-white shadow-[0_14px_30px_rgba(15,23,42,0.16)]'
+                : 'border border-white/80 bg-white shadow-[0_12px_30px_rgba(15,23,42,0.08)]'
             }`}
           >
             {msg.role === 'user' ? (
@@ -71,7 +84,7 @@ export function MessageList({
 
       {isStreaming && streamingContent !== undefined && (
         <div className="flex justify-start">
-          <div className="max-w-[75%] rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
+          <div className="max-w-[78%] rounded-[1.35rem] border border-white/80 bg-white px-4 py-3 shadow-[0_12px_30px_rgba(15,23,42,0.08)]">
             <ProgressTrace steps={progressSteps} locale={locale} />
             <StreamingMessage content={streamingContent} locale={locale} isStreaming />
           </div>
@@ -86,7 +99,7 @@ function ProgressTrace({ steps, locale }: { steps: StreamProgress[]; locale: Loc
   if (steps.length === 0) return null;
 
   return (
-    <details open className="mb-3 rounded-md border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-800">
+    <details open className="mb-3 rounded-2xl border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-800">
       <summary className="cursor-pointer font-medium">{t(locale).progressTrace}</summary>
       <div className="mt-2 space-y-1">
         {steps.map((step, index) => (

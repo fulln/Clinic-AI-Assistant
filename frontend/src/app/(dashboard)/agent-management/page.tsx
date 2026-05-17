@@ -89,51 +89,50 @@ export default function AgentManagementPage() {
   ];
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mb-6">
+    <div className="space-y-6">
+      <div className="saas-panel px-6 py-6">
         <h1 className="text-2xl font-bold text-gray-900">{copy.agentsManagementTitle}</h1>
         <p className="mt-1 text-sm text-gray-500">{copy.agentsManagementSubtitle}</p>
-      </div>
-
-      <div className="mb-6 border-b border-gray-200">
-        <nav className="-mb-px flex gap-6">
-          {tabs.map((tab) => (
-            <button
-              key={tab.value}
-              onClick={() => setFilter(tab.value)}
-              className={[
-                'whitespace-nowrap border-b-2 pb-3 text-sm font-medium transition',
-                filter === tab.value
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700',
-              ].join(' ')}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </nav>
+        <div className="mt-6 border-b border-slate-200">
+          <nav className="-mb-px flex gap-6">
+            {tabs.map((tab) => (
+              <button
+                key={tab.value}
+                onClick={() => setFilter(tab.value)}
+                className={[
+                  'whitespace-nowrap border-b-2 pb-3 text-sm font-semibold transition',
+                  filter === tab.value
+                    ? 'border-slate-900 text-slate-900'
+                    : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700',
+                ].join(' ')}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </nav>
+        </div>
       </div>
 
       {actionError && (
-        <div className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{actionError}</div>
+        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{actionError}</div>
       )}
 
       {isLoading ? (
-        <div className="rounded-lg border border-gray-200 bg-white px-4 py-6 text-sm text-gray-500">
+        <div className="saas-panel px-4 py-6 text-sm text-gray-500">
           {copy.loading}
         </div>
       ) : error ? (
-        <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{copy.agentsLoadFailed}</div>
+        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{copy.agentsLoadFailed}</div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div className="overflow-hidden rounded-[1.75rem] border border-white/80 bg-white/92 shadow-[0_18px_60px_rgba(15,23,42,0.08)]">
           <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+            <thead className="bg-slate-50/90">
               <tr className="text-left text-xs font-medium uppercase tracking-wide text-gray-500">
-                <th className="px-4 py-3">Name</th>
-                <th className="px-4 py-3">Slug</th>
-                <th className="px-4 py-3">Type</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Version</th>
+                <th className="px-4 py-3">{copy.agentsTableName}</th>
+                <th className="px-4 py-3">{copy.agentsTableSlug}</th>
+                <th className="px-4 py-3">{copy.agentsTableType}</th>
+                <th className="px-4 py-3">{copy.agentsTableStatus}</th>
+                <th className="px-4 py-3">{copy.agentsTableVersion}</th>
                 <th className="px-4 py-3">{copy.agentsAllowedRoles}</th>
                 <th className="px-4 py-3">{copy.agentsActions}</th>
               </tr>
@@ -141,31 +140,31 @@ export default function AgentManagementPage() {
             <tbody className="divide-y divide-gray-100">
               {filteredAgents.map((agent) => (
                 <tr key={agent.id} className="align-top">
-                  <td className="px-4 py-3">
-                    <div className="font-medium text-gray-900">{agent.name}</div>
-                    <div className="mt-1 text-sm text-gray-500">{agent.description}</div>
+                  <td className="px-4 py-4">
+                    <div className="font-semibold text-slate-900">{agent.name}</div>
+                    <div className="mt-1 text-sm leading-6 text-slate-500">{agent.description}</div>
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-600">{agent.slug}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600">
+                  <td className="px-4 py-4 text-sm text-slate-600">{agent.slug}</td>
+                  <td className="px-4 py-4 text-sm text-slate-600">
                     {agent.agentType === 'demo' ? copy.agentsTabDemo : copy.agentsTabFormal}
                   </td>
-                  <td className="px-4 py-3 text-sm">
+                  <td className="px-4 py-4 text-sm">
                     <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${getStatusClassName(agent.status)}`}>
                       {getStatusLabel(agent.status, copy)}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-600">{agent.version ?? copy.agentsNoVersion}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600">
+                  <td className="px-4 py-4 text-sm text-slate-600">{agent.version ?? copy.agentsNoVersion}</td>
+                  <td className="px-4 py-4 text-sm text-slate-600">
                     {agent.allowedRoles.length > 0 ? agent.allowedRoles.join(', ') : '-'}
                   </td>
-                  <td className="px-4 py-3">
-                    <div className="flex gap-2">
+                  <td className="px-4 py-4">
+                    <div className="flex flex-wrap gap-2">
                       {agent.status === 'draft' && (
                         <button
                           type="button"
                           onClick={() => void handlePublish(agent.id)}
                           disabled={isPublishing || isArchiving || isRestoring}
-                          className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                          className="rounded-2xl bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50"
                         >
                           {copy.agentsPublish}
                         </button>
@@ -175,7 +174,7 @@ export default function AgentManagementPage() {
                           type="button"
                           onClick={() => void handleRestore(agent.id)}
                           disabled={isPublishing || isArchiving || isRestoring}
-                          className="rounded-md bg-amber-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-700 disabled:opacity-50"
+                          className="rounded-2xl bg-amber-500 px-3 py-2 text-xs font-semibold text-white transition hover:bg-amber-600 disabled:opacity-50"
                         >
                           {copy.agentsRestoreToDraft}
                         </button>
@@ -185,7 +184,7 @@ export default function AgentManagementPage() {
                           type="button"
                           onClick={() => void handleArchive(agent.id)}
                           disabled={isPublishing || isArchiving || isRestoring}
-                          className="rounded-md bg-gray-800 px-3 py-1.5 text-xs font-medium text-white hover:bg-gray-900 disabled:opacity-50"
+                          className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:opacity-50"
                         >
                           {copy.agentsArchive}
                         </button>

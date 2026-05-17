@@ -24,35 +24,32 @@ export default function AgentsPage() {
   });
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mb-6">
+    <div className="space-y-6">
+      <div className="saas-panel px-6 py-6">
         <h1 className="text-2xl font-bold text-gray-900">{copy.agentsTitle}</h1>
         <p className="mt-1 text-sm text-gray-500">{copy.agentsSubtitle}</p>
+        <div className="mt-6 border-b border-slate-200">
+          <nav className="-mb-px flex gap-6" aria-label="Tabs">
+            {tabs.map((tab) => (
+              <button
+                key={tab.value}
+                onClick={() => setActiveTab(tab.value)}
+                className={[
+                  'whitespace-nowrap border-b-2 pb-3 text-sm font-semibold transition',
+                  activeTab === tab.value
+                    ? 'border-slate-900 text-slate-900'
+                    : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700',
+                ].join(' ')}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </nav>
+        </div>
       </div>
 
-      {/* Tabs */}
-      <div className="mb-6 border-b border-gray-200">
-        <nav className="-mb-px flex gap-6" aria-label="Tabs">
-          {tabs.map((tab) => (
-            <button
-              key={tab.value}
-              onClick={() => setActiveTab(tab.value)}
-              className={[
-                'whitespace-nowrap border-b-2 pb-3 text-sm font-medium transition',
-                activeTab === tab.value
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700',
-              ].join(' ')}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </nav>
-      </div>
-
-      {/* Content */}
       {isLoading ? (
-        <div className="flex items-center justify-center py-20">
+        <div className="saas-panel flex items-center justify-center py-24">
           <svg
             className="h-8 w-8 animate-spin text-blue-500"
             xmlns="http://www.w3.org/2000/svg"
@@ -69,7 +66,7 @@ export default function AgentsPage() {
           </svg>
         </div>
       ) : error ? (
-        <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {copy.agentsLoadFailed}
         </div>
       ) : (

@@ -50,6 +50,7 @@ type SiteDictionary = {
   agentsActions: string;
   agentsPublish: string;
   agentsArchive: string;
+  agentsRestoreToDraft: string;
   agentsNoVersion: string;
   agentsAllowedRoles: string;
   agentsManagementForbidden: string;
@@ -137,6 +138,7 @@ const dictionaries: Record<Locale, SiteDictionary> = {
     agentsActions: '操作',
     agentsPublish: '发布',
     agentsArchive: '归档',
+    agentsRestoreToDraft: '恢复为草稿',
     agentsNoVersion: '未发布',
     agentsAllowedRoles: '允许角色',
     agentsManagementForbidden: '仅管理员可访问 Agent 管理。',
@@ -222,11 +224,12 @@ const dictionaries: Record<Locale, SiteDictionary> = {
     agentsActions: 'Actions',
     agentsPublish: 'Publish',
     agentsArchive: 'Archive',
+    agentsRestoreToDraft: 'Restore to draft',
     agentsNoVersion: 'Unpublished',
     agentsAllowedRoles: 'Allowed roles',
     agentsManagementForbidden: 'Only admins can access agent management.',
     agentsActionFailed: 'Agent action failed. Please try again.',
-  ragTitle: 'RAG Knowledge Base Management',
+    ragTitle: 'RAG Knowledge Base Management',
     ragDoctorOnlyTitle: 'This feature is only available to doctors',
     ragDoctorOnlySubtitle: 'Please sign in with a doctor account to continue.',
     ragCreateTitle: 'Create knowledge base',

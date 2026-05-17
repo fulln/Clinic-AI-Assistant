@@ -27,7 +27,17 @@ export default function AgentManagementPage() {
   const copy = getSiteCopy(locale);
   const [filter, setFilter] = useState<FilterValue>('all');
   const [actionError, setActionError] = useState<string | null>(null);
-  const { agents, isLoading, error, publishAgent, archiveAgent, isPublishing, isArchiving } =
+  const {
+    agents,
+    isLoading,
+    error,
+    publishAgent,
+    archiveAgent,
+    restoreAgent,
+    isPublishing,
+    isArchiving,
+    isRestoring,
+  } =
     useAgentManagement();
 
   const filteredAgents = useMemo(() => {
@@ -49,8 +59,8 @@ export default function AgentManagementPage() {
     setActionError(null);
     try {
       await publishAgent(agentId);
-    } catch {
-      setActionError(copy.agentsActionFailed);
+    } catch (error: any) {
+      setActionError(error?.response?.data?.detail ?? copy.agentsActionFailed);
     }
   };
 
@@ -58,8 +68,17 @@ export default function AgentManagementPage() {
     setActionError(null);
     try {
       await archiveAgent(agentId);
-    } catch {
-      setActionError(copy.agentsActionFailed);
+    } catch (error: any) {
+      setActionError(error?.response?.data?.detail ?? copy.agentsActionFailed);
+    }
+  };
+
+  const handleRestore = async (agentId: string) => {
+    setActionError(null);
+    try {
+      await restoreAgent(agentId);
+    } catch (error: any) {
+      setActionError(error?.response?.data?.detail ?? copy.agentsActionFailed);
     }
   };
 
@@ -141,21 +160,31 @@ export default function AgentManagementPage() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex gap-2">
-                      {agent.status !== 'published' && (
+                      {agent.status === 'draft' && (
                         <button
                           type="button"
                           onClick={() => void handlePublish(agent.id)}
-                          disabled={isPublishing || isArchiving}
+                          disabled={isPublishing || isArchiving || isRestoring}
                           className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
                         >
                           {copy.agentsPublish}
+                        </button>
+                      )}
+                      {agent.status === 'archived' && (
+                        <button
+                          type="button"
+                          onClick={() => void handleRestore(agent.id)}
+                          disabled={isPublishing || isArchiving || isRestoring}
+                          className="rounded-md bg-amber-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-700 disabled:opacity-50"
+                        >
+                          {copy.agentsRestoreToDraft}
                         </button>
                       )}
                       {agent.status !== 'archived' && (
                         <button
                           type="button"
                           onClick={() => void handleArchive(agent.id)}
-                          disabled={isPublishing || isArchiving}
+                          disabled={isPublishing || isArchiving || isRestoring}
                           className="rounded-md bg-gray-800 px-3 py-1.5 text-xs font-medium text-white hover:bg-gray-900 disabled:opacity-50"
                         >
                           {copy.agentsArchive}

@@ -61,13 +61,23 @@ export function useAgentManagement() {
     onSuccess: refresh,
   });
 
+  const restoreMutation = useMutation({
+    mutationFn: async (agentId: string) => {
+      const { data } = await apiClient.post<RawAgent>(`/api/v1/agents/${agentId}/restore`);
+      return mapAgent(data);
+    },
+    onSuccess: refresh,
+  });
+
   return {
     agents: query.data ?? [],
     isLoading: query.isLoading,
     error: query.error,
     publishAgent: publishMutation.mutateAsync,
     archiveAgent: archiveMutation.mutateAsync,
+    restoreAgent: restoreMutation.mutateAsync,
     isPublishing: publishMutation.isPending,
     isArchiving: archiveMutation.isPending,
+    isRestoring: restoreMutation.isPending,
   };
 }

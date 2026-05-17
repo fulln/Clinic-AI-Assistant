@@ -41,3 +41,9 @@ class Agent:
     def archive(self) -> None:
         self.status = AgentStatus.ARCHIVED
         self.updated_at = datetime.utcnow()
+
+    def restore_to_draft(self) -> None:
+        if self.status != AgentStatus.ARCHIVED:
+            raise ValueError("Only archived agents can be restored to draft")
+        self.status = AgentStatus.DRAFT
+        self.updated_at = datetime.utcnow()

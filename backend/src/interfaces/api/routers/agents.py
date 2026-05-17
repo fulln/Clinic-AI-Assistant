@@ -256,3 +256,27 @@ async def archive_agent(
     agent.archive()
     saved = await repo.save(agent)
     return _agent_to_response(saved)
+
+
+# ---------------------------------------------------------------------------
+# POST /agents/{id}/restore — admin only
+# ---------------------------------------------------------------------------
+
+@router.post("/{agent_id}/restore", response_model=AgentResponse)
+async def restore_agent(
+    agent_id: uuid.UUID,
+    current_user=Depends(require_role(UserRole.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+):
+    repo = AgentRepository(db)
+    agent = await repo.find_by_id(agent_id)
+    if agent is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+
+    try:
+        agent.restore_to_draft()
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
+
+    saved = await repo.save(agent)
+    return _agent_to_response(saved)

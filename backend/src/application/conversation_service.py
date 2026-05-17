@@ -13,7 +13,15 @@ from src.domains.agent.repository import IAgentRepository
 from src.domains.agent.services import AgentDispatcher
 from src.domains.audit.entities import AuditAction, AuditOutcome
 from src.domains.audit.services import AuditService
-from src.domains.conversation.entities import DISCLAIMER_TEXT, Conversation, ConversationSession
+from src.domains.conversation.entities import Conversation, ConversationSession, Locale
+from src.domains.conversation.i18n import (
+    get_conversation_not_found_message,
+    get_disclaimer,
+    get_forbidden_agent_message,
+    get_generic_error_message,
+    get_progress_message,
+    parse_locale,
+)
 from src.domains.conversation.repository import IConversationRepository
 from src.domains.conversation.services import ConversationDomainService
 from src.domains.rag.repository import IKnowledgeBaseRepository
@@ -44,10 +52,14 @@ class ConversationApplicationService:
         self._domain = ConversationDomainService()
 
     async def create_conversation(
-        self, user_id: uuid.UUID, title: str | None, agent_id: uuid.UUID | None
+        self,
+        user_id: uuid.UUID,
+        title: str | None,
+        agent_id: uuid.UUID | None,
+        locale: Locale,
     ) -> tuple[Conversation, ConversationSession]:
-        conv = self._domain.create_conversation(user_id, title or "新对话")
-        session = self._domain.create_session(conv.id, agent_id)
+        conv = self._domain.create_conversation(user_id, title, locale)
+        session = self._domain.create_session(conv.id, agent_id, locale)
         await self._conv_repo.save_conversation(conv)
         await self._conv_repo.save_session(session)
         return conv, session
@@ -74,29 +86,39 @@ class ConversationApplicationService:
         content: str,
         agent_id: uuid.UUID | None,
         rag_enabled: bool | None,
+        locale: Locale | None,
         user_role: str,
     ) -> AsyncIterator[str]:
         conv = await self._conv_repo.find_conversation_by_id(conversation_id)
+        requested_locale = parse_locale(locale)
         if not conv or conv.user_id != user_id:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=get_conversation_not_found_message(requested_locale),
+            )
 
         session = await self._conv_repo.find_session(conversation_id)
         if not session:
-            session = self._domain.create_session(conv.id)
+            session = self._domain.create_session(conv.id, locale=requested_locale)
             await self._conv_repo.save_session(session)
+        effective_locale = parse_locale(locale or session.locale)
+        session.set_locale(effective_locale)
 
         effective_agent_id = agent_id or session.active_agent_id
         forced_agent = None
         if effective_agent_id:
             forced_agent = await self._agent_repo.find_by_id(effective_agent_id)
             if forced_agent and user_role not in forced_agent.allowed_roles and user_role != "admin":
-                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="您的角色无权使用此智能体")
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=get_forbidden_agent_message(effective_locale),
+                )
 
         if rag_enabled is not None and user_role == "doctor":
             session.rag_enabled = rag_enabled
 
         # Save user message
-        user_msg = self._domain.build_user_message(conv.id, session.id, content)
+        user_msg = self._domain.build_user_message(conv.id, session.id, content, effective_locale)
         await self._conv_repo.save_message(user_msg)
 
         # Build message history for LLM
@@ -107,14 +129,21 @@ class ConversationApplicationService:
         start_ts = time.monotonic()
 
         # SSE: start event
-        yield f"event: start\ndata: {json.dumps({'message_id': message_id, 'agent_id': str(effective_agent_id) if effective_agent_id else None, 'session_id': str(session.id)})}\n\n"
+        yield (
+            "event: start\ndata: "
+            f"{json.dumps({'message_id': message_id, 'agent_id': str(effective_agent_id) if effective_agent_id else None, 'session_id': str(session.id), 'locale': effective_locale.value})}\n\n"
+        )
 
         full_response = []
         refused = False
         steps: list[OrchestraStep] = []
         try:
             progress = self._progress
-            yield progress("supervisor", "主控 agent 启动 Orchestra Workflow：读取用户问题和共享上下文")
+            yield progress(
+                effective_locale,
+                "supervisor",
+                get_progress_message("supervisor_start", effective_locale),
+            )
 
             steps = await self._build_orchestra_steps(
                 content=content,
@@ -122,12 +151,17 @@ class ConversationApplicationService:
                 forced_agent=forced_agent,
                 user_role=user_role,
                 rag_enabled=session.rag_enabled,
+                locale=effective_locale,
             )
             if not steps:
-                raise ValueError("没有可用的子 agent")
+                raise ValueError(get_generic_error_message(effective_locale))
 
             step_labels = "、".join(step.agent.name for step in steps)
-            yield progress("routing", f"主控 agent 编排执行计划：{step_labels}")
+            yield progress(
+                effective_locale,
+                "routing",
+                get_progress_message("routing", effective_locale, step_labels=step_labels),
+            )
 
             child_outputs: list[dict] = []
             for index, step in enumerate(steps, start=1):
@@ -135,8 +169,13 @@ class ConversationApplicationService:
                 step_rag_enabled = session.rag_enabled or step.workflow_type == "rag_qa"
                 if step.workflow_type == "rag_qa":
                     yield progress(
+                        effective_locale,
                         "rag_retrieval",
-                        f"主控 Workflow 正在为「{step.agent.name}」检索医生知识库",
+                        get_progress_message(
+                            "rag_retrieval",
+                            effective_locale,
+                            agent_name=step.agent.name,
+                        ),
                         agent_id=str(step.agent.id),
                         agent_name=step.agent.name,
                         workflow_type=step.workflow_type,
@@ -148,8 +187,13 @@ class ConversationApplicationService:
                         top_k=5,
                     )
                     yield progress(
+                        effective_locale,
                         "rag_retrieval_done",
-                        f"知识库检索完成，命中 {len(rag_chunks)} 条相关片段",
+                        get_progress_message(
+                            "rag_retrieval_done",
+                            effective_locale,
+                            count=len(rag_chunks),
+                        ),
                         agent_id=str(step.agent.id),
                         agent_name=step.agent.name,
                         workflow_type=step.workflow_type,
@@ -157,8 +201,16 @@ class ConversationApplicationService:
                     )
 
                 yield progress(
+                    effective_locale,
                     "child_start",
-                    f"主控 Workflow 调用子 agent {index}/{len(steps)}「{step.agent.name}」执行任务节点：{step.workflow_type}",
+                    get_progress_message(
+                        "child_start",
+                        effective_locale,
+                        index=index,
+                        total=len(steps),
+                        agent_name=step.agent.name,
+                        workflow_type=step.workflow_type,
+                    ),
                     agent_id=str(step.agent.id),
                     agent_name=step.agent.name,
                     workflow_type=step.workflow_type,
@@ -170,6 +222,7 @@ class ConversationApplicationService:
                     session_context=session.context_snapshot,
                     agent_id=str(step.agent.id),
                     user_role=user_role,
+                    locale=effective_locale,
                     rag_enabled=step_rag_enabled,
                     rag_chunks=rag_chunks,
                 )
@@ -186,40 +239,71 @@ class ConversationApplicationService:
                     }
                 )
                 yield progress(
+                    effective_locale,
                     "child_done",
-                    f"子 agent「{step.agent.name}」任务节点完成，结果已回传主控 Workflow",
+                    get_progress_message(
+                        "child_done",
+                        effective_locale,
+                        agent_name=step.agent.name,
+                    ),
                     agent_id=str(step.agent.id),
                     agent_name=step.agent.name,
                     workflow_type=step.workflow_type,
                 )
 
-            yield progress("supervisor", "主控 agent 执行汇总节点：综合子 agent 结果并生成最终回复")
-            async for token in self._stream_supervisor_answer(content, messages_for_llm, child_outputs):
+            yield progress(
+                effective_locale,
+                "supervisor",
+                get_progress_message("supervisor_summary", effective_locale),
+            )
+            async for token in self._stream_supervisor_answer(
+                content,
+                messages_for_llm,
+                child_outputs,
+                effective_locale,
+            ):
                 full_response.append(token)
                 yield f"event: token\ndata: {json.dumps({'token': token})}\n\n"
             response_text = "".join(full_response)
-            if DISCLAIMER_TEXT not in response_text:
-                disclaimer_token = f"\n\n{DISCLAIMER_TEXT}"
+            disclaimer_text = get_disclaimer(effective_locale)
+            if disclaimer_text not in response_text:
+                disclaimer_token = f"\n\n{disclaimer_text}"
                 full_response.append(disclaimer_token)
                 yield f"event: token\ndata: {json.dumps({'token': disclaimer_token})}\n\n"
-        except Exception as e:
+        except HTTPException:
+            raise
+        except Exception:
             refused = True
-            yield f"event: error\ndata: {json.dumps({'code': 'agent_error', 'message': str(e)})}\n\n"
+            yield (
+                "event: error\ndata: "
+                f"{json.dumps({'code': 'agent_error', 'message': get_generic_error_message(effective_locale), 'locale': effective_locale.value})}\n\n"
+            )
 
         if not refused:
             response_text = "".join(full_response)
-            if DISCLAIMER_TEXT in response_text:
-                yield f"event: disclaimer\ndata: {json.dumps({'text': DISCLAIMER_TEXT})}\n\n"
+            disclaimer_text = get_disclaimer(effective_locale)
+            if disclaimer_text in response_text:
+                yield (
+                    "event: disclaimer\ndata: "
+                    f"{json.dumps({'text': disclaimer_text, 'locale': effective_locale.value})}\n\n"
+                )
 
             latency_ms = round((time.monotonic() - start_ts) * 1000)
-            yield f"event: end\ndata: {json.dumps({'message_id': message_id, 'latency_ms': latency_ms})}\n\n"
+            yield (
+                "event: end\ndata: "
+                f"{json.dumps({'message_id': message_id, 'latency_ms': latency_ms, 'locale': effective_locale.value})}\n\n"
+            )
 
             # Save assistant message
             response_agent_id = steps[0].agent.id if steps else effective_agent_id
             if response_agent_id:
                 assistant_msg = self._domain.build_assistant_message(
-                    conv.id, session.id, response_agent_id, response_text,
-                    metadata={"latency_ms": latency_ms, "orchestra": True}
+                    conv.id,
+                    session.id,
+                    response_agent_id,
+                    response_text,
+                    effective_locale,
+                    metadata={"latency_ms": latency_ms, "orchestra": True},
                 )
                 await self._conv_repo.save_message(assistant_msg)
 
@@ -233,10 +317,12 @@ class ConversationApplicationService:
             actor_id=user_id,
             actor_role=user_role,
             session_id=session.id,
+            detail={"locale": effective_locale.value},
         )
 
     @staticmethod
     def _progress(
+        locale: Locale,
         stage: str,
         message: str,
         agent_id: str | None = None,
@@ -251,6 +337,7 @@ class ConversationApplicationService:
             "agent_name": agent_name,
             "workflow_type": workflow_type,
             "artifacts": artifacts or [],
+            "locale": locale.value,
         }
         return f"event: progress\ndata: {json.dumps(payload, ensure_ascii=False)}\n\n"
 
@@ -261,10 +348,17 @@ class ConversationApplicationService:
         forced_agent: Agent | None,
         user_role: str,
         rag_enabled: bool,
+        locale: Locale,
     ) -> list[OrchestraStep]:
         if forced_agent:
             workflow_type = self._agent_workflow_type(forced_agent)
-            return [OrchestraStep(forced_agent, workflow_type, "用户手动指定")]
+            return [
+                OrchestraStep(
+                    forced_agent,
+                    workflow_type,
+                    get_progress_message("user_selected", locale),
+                )
+            ]
 
         candidates = [
             agent
@@ -276,7 +370,7 @@ class ConversationApplicationService:
         if not candidates:
             return []
 
-        route = await self._route_with_supervisor(content, messages, candidates, rag_enabled)
+        route = await self._route_with_supervisor(content, messages, candidates, rag_enabled, locale)
         selected: list[OrchestraStep] = []
         by_workflow = {self._agent_workflow_type(agent): agent for agent in candidates}
         by_slug = {agent.slug: agent for agent in candidates}
@@ -290,19 +384,25 @@ class ConversationApplicationService:
                     OrchestraStep(
                         agent=agent,
                         workflow_type=self._agent_workflow_type(agent),
-                        reason=str(item.get("reason") or "主控 agent 路由"),
+                        reason=str(item.get("reason") or get_progress_message("supervisor_route", locale)),
                     )
                 )
             if len(selected) >= 2:
                 break
 
         if selected:
-            self._augment_multi_intent_steps(content, selected, by_workflow, rag_enabled)
+            self._augment_multi_intent_steps(content, selected, by_workflow, rag_enabled, locale)
             return selected
 
         fallback_workflow = self._fallback_workflow(content, rag_enabled)
         fallback_agent = by_workflow.get(fallback_workflow) or candidates[0]
-        return [OrchestraStep(fallback_agent, self._agent_workflow_type(fallback_agent), "规则兜底路由")]
+        return [
+            OrchestraStep(
+                fallback_agent,
+                self._agent_workflow_type(fallback_agent),
+                get_progress_message("fallback_route", locale),
+            )
+        ]
 
     def _augment_multi_intent_steps(
         self,
@@ -310,19 +410,20 @@ class ConversationApplicationService:
         selected: list[OrchestraStep],
         by_workflow: dict[str, Agent],
         rag_enabled: bool = False,
+        locale: Locale = Locale.ZH_CN,
     ) -> None:
         if len(selected) >= 2:
             return
         requested_workflows: list[tuple[str, str]] = []
         text = content.lower()
         if rag_enabled or "知识库" in text or "rag" in text:
-            requested_workflows.append(("rag_qa", "用户要求基于知识库回答"))
+            requested_workflows.append(("rag_qa", get_progress_message("rag_request", locale)))
         if any(keyword in text for keyword in ["摘要", "整理", "病历", "转诊", "文书", "记录"]):
-            requested_workflows.append(("document_organizer", "用户同时要求整理成文书/摘要"))
+            requested_workflows.append(("document_organizer", get_progress_message("document_request", locale)))
         if any(keyword in text for keyword in ["科普", "预防", "护理", "宣教", "健康教育"]):
-            requested_workflows.append(("health_educator", "用户同时要求健康宣教/护理说明"))
+            requested_workflows.append(("health_educator", get_progress_message("education_request", locale)))
         if any(keyword in text for keyword in ["预约", "排班", "运营", "收费", "接待"]):
-            requested_workflows.append(("operations_consultant", "用户同时要求运营流程建议"))
+            requested_workflows.append(("operations_consultant", get_progress_message("operations_request", locale)))
 
         existing = {step.workflow_type for step in selected}
         for workflow_type, reason in requested_workflows:
@@ -340,6 +441,7 @@ class ConversationApplicationService:
         messages: list[dict],
         candidates: list[Agent],
         rag_enabled: bool,
+        locale: Locale,
     ) -> list[dict]:
         catalog = [
             {
@@ -351,19 +453,18 @@ class ConversationApplicationService:
             for agent in candidates
         ]
         recent = messages[-6:]
-        prompt = (
-            "你是诊所多智能体系统的主控 agent。根据用户最新问题和共享对话上下文，"
-            "选择最合适的 1 个子 agent；只有当问题明显需要两个不同能力时才选择 2 个。"
-            "只输出 JSON 数组，不要输出 Markdown。每项包含 workflow_type 和 reason。\n\n"
-            f"RAG 是否启用：{rag_enabled}\n"
-            f"可用子 agent：{json.dumps(catalog, ensure_ascii=False)}\n"
-            f"共享对话上下文：{json.dumps(recent, ensure_ascii=False)}\n"
-            f"用户最新问题：{content}"
-        )
+        prompt = self._build_supervisor_route_prompt(content, recent, catalog, rag_enabled, locale)
         try:
             result = await self._llm.ainvoke(
                 [
-                    {"role": "system", "content": "你只输出可解析 JSON。"},
+                    {
+                        "role": "system",
+                        "content": (
+                            "You only output valid JSON."
+                            if locale == Locale.EN_US
+                            else "你只输出可解析 JSON。"
+                        ),
+                    },
                     {"role": "user", "content": prompt},
                 ]
             )
@@ -373,7 +474,12 @@ class ConversationApplicationService:
             if isinstance(parsed, list):
                 return [item for item in parsed if isinstance(item, dict)]
         except Exception:
-            return [{"workflow_type": self._fallback_workflow(content, rag_enabled), "reason": "主控规则路由"}]
+            return [
+                {
+                    "workflow_type": self._fallback_workflow(content, rag_enabled),
+                    "reason": get_progress_message("supervisor_route", locale),
+                }
+            ]
         return []
 
     def _fallback_workflow(self, content: str, rag_enabled: bool) -> str:
@@ -397,18 +503,19 @@ class ConversationApplicationService:
         content: str,
         messages: list[dict],
         child_outputs: list[dict],
+        locale: Locale,
     ) -> AsyncIterator[str]:
-        summary_prompt = (
-            "你是诊所多智能体系统的主控 agent。你已经把用户问题分派给子 agent 执行。"
-            "请基于共享用户提示词、上下文和子 agent 输出，生成给前端用户的最终回复。"
-            "要求：整合而不是机械拼接；说明关键结论；保留医疗安全边界；不要暴露内部 JSON。\n\n"
-            f"用户最新问题：{content}\n"
-            f"共享对话上下文：{json.dumps(messages[-8:], ensure_ascii=False)}\n"
-            f"子 agent 执行结果：{json.dumps(child_outputs, ensure_ascii=False)}"
-        )
+        summary_prompt = self._build_supervisor_summary_prompt(content, messages, child_outputs, locale)
         async for token in self._llm.astream(
             [
-                {"role": "system", "content": "你是负责汇总子 agent 输出的主控 agent。"},
+                {
+                    "role": "system",
+                    "content": (
+                        "You are the supervisor agent responsible for synthesizing child-agent outputs into the final reply."
+                        if locale == Locale.EN_US
+                        else "你是负责汇总子 agent 输出的主控 agent。"
+                    ),
+                },
                 {"role": "user", "content": summary_prompt},
             ]
         ):
@@ -482,19 +589,33 @@ class ConversationApplicationService:
         return response.data[0].embedding
 
     async def update_session(
-        self, conversation_id: uuid.UUID, user_id: uuid.UUID,
-        active_agent_id: uuid.UUID | None, rag_enabled: bool | None, user_role: str
+        self,
+        conversation_id: uuid.UUID,
+        user_id: uuid.UUID,
+        active_agent_id: uuid.UUID | None,
+        rag_enabled: bool | None,
+        locale: Locale | None,
+        user_role: str,
     ) -> ConversationSession:
         conv = await self._conv_repo.find_conversation_by_id(conversation_id)
+        requested_locale = parse_locale(locale)
         if not conv or conv.user_id != user_id:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=get_conversation_not_found_message(requested_locale),
+            )
         session = await self._conv_repo.find_session(conversation_id)
         if not session:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=get_conversation_not_found_message(requested_locale),
+            )
         if active_agent_id is not None:
             session.switch_agent(active_agent_id)
         if rag_enabled is not None and user_role == "doctor":
             session.rag_enabled = rag_enabled
+        if locale is not None:
+            session.set_locale(requested_locale)
         await self._conv_repo.save_session(session)
         return session
 
@@ -503,3 +624,58 @@ class ConversationApplicationService:
         if not conv or conv.user_id != user_id:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found")
         await self._conv_repo.soft_delete_conversation(conversation_id)
+
+    @staticmethod
+    def _build_supervisor_route_prompt(
+        content: str,
+        recent: list[dict],
+        catalog: list[dict],
+        rag_enabled: bool,
+        locale: Locale,
+    ) -> str:
+        if locale == Locale.EN_US:
+            return (
+                "You are the supervisor agent for a clinic multi-agent system. "
+                "Select the best 1 child agent for the user's latest request, or 2 only when the request clearly needs two distinct capabilities. "
+                "Output JSON only, with each item containing workflow_type and reason. "
+                "Write the reasons in English.\n\n"
+                f"RAG enabled: {rag_enabled}\n"
+                f"Available child agents: {json.dumps(catalog, ensure_ascii=False)}\n"
+                f"Shared conversation context: {json.dumps(recent, ensure_ascii=False)}\n"
+                f"Latest user request: {content}"
+            )
+        return (
+            "你是诊所多智能体系统的主控 agent。根据用户最新问题和共享对话上下文，"
+            "选择最合适的 1 个子 agent；只有当问题明显需要两个不同能力时才选择 2 个。"
+            "只输出 JSON 数组，不要输出 Markdown。每项包含 workflow_type 和 reason。\n\n"
+            f"RAG 是否启用：{rag_enabled}\n"
+            f"可用子 agent：{json.dumps(catalog, ensure_ascii=False)}\n"
+            f"共享对话上下文：{json.dumps(recent, ensure_ascii=False)}\n"
+            f"用户最新问题：{content}"
+        )
+
+    @staticmethod
+    def _build_supervisor_summary_prompt(
+        content: str,
+        messages: list[dict],
+        child_outputs: list[dict],
+        locale: Locale,
+    ) -> str:
+        if locale == Locale.EN_US:
+            return (
+                "You are the supervisor agent of a clinic multi-agent system. "
+                "The user-facing reply must be written in English, regardless of the language used in prior messages. "
+                "Based on the shared context and child-agent outputs, write the final user reply. "
+                "Requirements: synthesize instead of concatenating, explain the key takeaways, keep the medical safety boundary, and do not expose internal JSON.\n\n"
+                f"Latest user request: {content}\n"
+                f"Shared conversation context: {json.dumps(messages[-8:], ensure_ascii=False)}\n"
+                f"Child-agent outputs: {json.dumps(child_outputs, ensure_ascii=False)}"
+            )
+        return (
+            "你是诊所多智能体系统的主控 agent。你已经把用户问题分派给子 agent 执行。"
+            "请基于共享用户提示词、上下文和子 agent 输出，生成给前端用户的最终回复。"
+            "要求：整合而不是机械拼接；说明关键结论；保留医疗安全边界；不要暴露内部 JSON。\n\n"
+            f"用户最新问题：{content}\n"
+            f"共享对话上下文：{json.dumps(messages[-8:], ensure_ascii=False)}\n"
+            f"子 agent 执行结果：{json.dumps(child_outputs, ensure_ascii=False)}"
+        )

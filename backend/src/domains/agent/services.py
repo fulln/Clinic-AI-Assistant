@@ -2,6 +2,7 @@
 import uuid
 from typing import AsyncIterator
 
+from src.domains.conversation.entities import Locale
 from src.infrastructure.llm.langchain_adapter import LLMAdapter
 from src.infrastructure.llm.langgraph_workflows.base_workflow import WorkflowState
 from src.infrastructure.llm.langgraph_workflows.medical_auxiliary import MedicalAuxiliaryWorkflow
@@ -49,6 +50,7 @@ class AgentDispatcher:
         session_context: dict,
         agent_id: str,
         user_role: str,
+        locale: Locale,
         rag_enabled: bool = False,
         rag_chunks: list[dict] | None = None,
     ) -> AsyncIterator[str]:
@@ -62,6 +64,7 @@ class AgentDispatcher:
             "session_context": session_context,
             "agent_id": agent_id,
             "user_role": user_role,
+            "locale": locale,
             "rag_enabled": rag_enabled,
             "rag_chunks": rag_chunks or [],
             "response_tokens": [],

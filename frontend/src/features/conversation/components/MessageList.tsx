@@ -2,10 +2,12 @@
 
 import { useEffect, useRef } from 'react';
 import { StreamingMessage } from './StreamingMessage';
-import type { Message } from '@/domains/conversation/entities';
+import type { Locale, Message } from '@/domains/conversation/entities';
 import type { StreamProgress } from '../hooks/useSSEStream';
+import { normalizeLocale, t } from '@/shared/i18n/conversation';
 
 interface MessageListProps {
+  locale: Locale;
   messages: Message[];
   streamingContent?: string;
   isStreaming?: boolean;
@@ -13,12 +15,14 @@ interface MessageListProps {
 }
 
 export function MessageList({
+  locale,
   messages,
   streamingContent,
   isStreaming,
   progressSteps = [],
 }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
+  const copy = t(locale);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -27,7 +31,7 @@ export function MessageList({
   if (messages.length === 0 && !isStreaming) {
     return (
       <div className="flex flex-1 items-center justify-center text-sm text-gray-400">
-        开始与 AI 助手对话
+        {copy.emptyState}
       </div>
     );
   }
@@ -50,9 +54,13 @@ export function MessageList({
               <p className="whitespace-pre-wrap">{msg.content}</p>
             ) : (
               <>
-                <ProgressTrace steps={msg.progressSteps ?? []} />
+                <ProgressTrace
+                  steps={msg.progressSteps ?? []}
+                  locale={normalizeLocale(msg.metadata?.locale ?? locale)}
+                />
                 <StreamingMessage
                   content={msg.content}
+                  locale={normalizeLocale(msg.metadata?.disclaimer_locale ?? msg.metadata?.locale ?? locale)}
                   hasDisclaimer={msg.hasDisclaimer}
                 />
               </>
@@ -64,8 +72,8 @@ export function MessageList({
       {isStreaming && streamingContent !== undefined && (
         <div className="flex justify-start">
           <div className="max-w-[75%] rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
-            <ProgressTrace steps={progressSteps} />
-            <StreamingMessage content={streamingContent} isStreaming />
+            <ProgressTrace steps={progressSteps} locale={locale} />
+            <StreamingMessage content={streamingContent} locale={locale} isStreaming />
           </div>
         </div>
       )}
@@ -74,12 +82,12 @@ export function MessageList({
   );
 }
 
-function ProgressTrace({ steps }: { steps: StreamProgress[] }) {
+function ProgressTrace({ steps, locale }: { steps: StreamProgress[]; locale: Locale }) {
   if (steps.length === 0) return null;
 
   return (
     <details open className="mb-3 rounded-md border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-800">
-      <summary className="cursor-pointer font-medium">多 agent 执行轨迹</summary>
+      <summary className="cursor-pointer font-medium">{t(locale).progressTrace}</summary>
       <div className="mt-2 space-y-1">
         {steps.map((step, index) => (
           <div key={`${step.stage}-${index}`} className="space-y-2">

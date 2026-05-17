@@ -1,3 +1,6 @@
+import type { Locale } from '@/domains/conversation/entities';
+import { getSiteCopy } from '@/shared/i18n/site';
+
 /**
  * T095 — RAG domain service: file validation.
  */
@@ -16,12 +19,13 @@ export class RAGDomainService {
    * Validate a file before upload.
    * Returns an error message string, or null if the file is valid.
    */
-  static validateFile(file: File): string | null {
+  static validateFile(file: File, locale: Locale): string | null {
+    const copy = getSiteCopy(locale);
     if (!ALLOWED_TYPES.includes(file.type)) {
-      return `不支持的文件类型：${file.type || '未知'}。请上传 PDF、TXT、DOCX 或 Markdown 文件。`;
+      return copy.ragUnsupportedType(file.type || '');
     }
     if (file.size > MAX_FILE_SIZE_BYTES) {
-      return `文件过大（${(file.size / 1024 / 1024).toFixed(1)} MB），最大允许 50 MB。`;
+      return copy.ragFileTooLarge((file.size / 1024 / 1024).toFixed(1));
     }
     return null;
   }

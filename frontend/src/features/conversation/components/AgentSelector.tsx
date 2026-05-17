@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import apiClient from '@/shared/api/client';
 import { useAuthStore } from '@/shared/store/authStore';
+import type { Locale } from '@/domains/conversation/entities';
+import { getSiteCopy } from '@/shared/i18n/site';
 
 interface AgentOption {
   id: string;
@@ -15,11 +17,13 @@ interface AgentSelectorProps {
   value: string | null;
   onChange: (agentId: string) => void;
   disabled?: boolean;
+  locale: Locale;
 }
 
-export function AgentSelector({ value, onChange, disabled }: AgentSelectorProps) {
+export function AgentSelector({ value, onChange, disabled, locale }: AgentSelectorProps) {
   const [agents, setAgents] = useState<AgentOption[]>([]);
   const user = useAuthStore((s) => s.user);
+  const copy = getSiteCopy(locale);
 
   useEffect(() => {
     apiClient
@@ -42,10 +46,10 @@ export function AgentSelector({ value, onChange, disabled }: AgentSelectorProps)
       disabled={disabled}
       className="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-50"
     >
-      <option value="">选择智能体</option>
+      <option value="">{copy.conversationSelectAgent}</option>
       {agents.map((a) => (
         <option key={a.id} value={a.id}>
-          {a.name} {a.agent_type === 'demo' ? '（演示）' : ''}
+          {a.name} {a.agent_type === 'demo' ? copy.conversationDemoSuffix : ''}
         </option>
       ))}
     </select>

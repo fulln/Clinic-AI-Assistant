@@ -4,17 +4,20 @@ import { useState } from 'react';
 import { useAgents } from '@/features/agent-catalog/hooks/useAgents';
 import { AgentList } from '@/features/agent-catalog/components/AgentList';
 import type { AgentType } from '@/domains/agent/entities';
+import { useLocaleStore } from '@/shared/store/localeStore';
+import { getSiteCopy } from '@/shared/i18n/site';
 
 type TabValue = 'all' | AgentType;
 
-const TABS: { label: string; value: TabValue }[] = [
-  { label: '全部', value: 'all' },
-  { label: '正式', value: 'formal' },
-  { label: '演示', value: 'demo' },
-];
-
 export default function AgentsPage() {
   const [activeTab, setActiveTab] = useState<TabValue>('all');
+  const locale = useLocaleStore((state) => state.locale);
+  const copy = getSiteCopy(locale);
+  const tabs: { label: string; value: TabValue }[] = [
+    { label: copy.agentsTabAll, value: 'all' },
+    { label: copy.agentsTabFormal, value: 'formal' },
+    { label: copy.agentsTabDemo, value: 'demo' },
+  ];
 
   const { agents, isLoading, error } = useAgents({
     type: activeTab === 'all' ? undefined : activeTab,
@@ -23,14 +26,14 @@ export default function AgentsPage() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">智能体目录</h1>
-        <p className="mt-1 text-sm text-gray-500">浏览并使用可用的 AI 智能体</p>
+        <h1 className="text-2xl font-bold text-gray-900">{copy.agentsTitle}</h1>
+        <p className="mt-1 text-sm text-gray-500">{copy.agentsSubtitle}</p>
       </div>
 
       {/* Tabs */}
       <div className="mb-6 border-b border-gray-200">
         <nav className="-mb-px flex gap-6" aria-label="Tabs">
-          {TABS.map((tab) => (
+          {tabs.map((tab) => (
             <button
               key={tab.value}
               onClick={() => setActiveTab(tab.value)}
@@ -55,7 +58,7 @@ export default function AgentsPage() {
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
             viewBox="0 0 24 24"
-            aria-label="加载中"
+            aria-label={copy.loading}
           >
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
             <path
@@ -67,10 +70,10 @@ export default function AgentsPage() {
         </div>
       ) : error ? (
         <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
-          加载智能体失败，请稍后重试。
+          {copy.agentsLoadFailed}
         </div>
       ) : (
-        <AgentList agents={agents} />
+        <AgentList agents={agents} locale={locale} />
       )}
     </div>
   );

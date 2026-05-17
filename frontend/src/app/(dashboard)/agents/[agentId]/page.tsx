@@ -6,6 +6,8 @@ import { apiClient } from '@/shared/api/client';
 import type { Agent } from '@/domains/agent/entities';
 import { AgentTypeBadge } from '@/features/agent-catalog/components/AgentTypeBadge';
 import { ConversationPanel } from '@/features/conversation/components/ConversationPanel';
+import { useLocaleStore } from '@/shared/store/localeStore';
+import { getSiteCopy } from '@/shared/i18n/site';
 
 interface RawAgent {
   id: string;
@@ -36,11 +38,13 @@ function mapAgent(raw: RawAgent): Agent {
 export default function AgentDetailPage() {
   const params = useParams<{ agentId: string }>();
   const agentId = params.agentId;
+  const locale = useLocaleStore((state) => state.locale);
+  const copy = getSiteCopy(locale);
 
   const [agent, setAgent] = useState<Agent | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [loadingAgent, setLoadingAgent] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [hasLoadError, setHasLoadError] = useState(false);
 
   useEffect(() => {
     if (!agentId) return;
@@ -57,9 +61,10 @@ export default function AgentDetailPage() {
         if (!cancelled) {
           setAgent(mapAgent(agentRes.data));
           setConversationId(convRes.data.id);
+          setHasLoadError(false);
         }
       } catch {
-        if (!cancelled) setError('加载智能体信息失败，请稍后重试。');
+        if (!cancelled) setHasLoadError(true);
       } finally {
         if (!cancelled) setLoadingAgent(false);
       }
@@ -80,7 +85,7 @@ export default function AgentDetailPage() {
           xmlns="http://www.w3.org/2000/svg"
           fill="none"
           viewBox="0 0 24 24"
-          aria-label="加载中"
+          aria-label={copy.loading}
         >
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
           <path
@@ -93,11 +98,11 @@ export default function AgentDetailPage() {
     );
   }
 
-  if (error || !agent) {
+  if (hasLoadError || !agent) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-10">
         <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error ?? '智能体不存在。'}
+          {hasLoadError ? copy.agentsLoadFailed : copy.agentsNotFound}
         </div>
       </div>
     );
@@ -111,7 +116,7 @@ export default function AgentDetailPage() {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-bold text-gray-900 truncate">{agent.name}</h1>
-              <AgentTypeBadge agentType={agent.agentType} />
+              <AgentTypeBadge agentType={agent.agentType} locale={locale} />
               {agent.version && (
                 <span className="text-xs text-gray-400">v{agent.version}</span>
               )}
@@ -140,7 +145,7 @@ export default function AgentDetailPage() {
           <ConversationPanel agentId={agentId} conversationId={conversationId} />
         ) : (
           <div className="flex h-full items-center justify-center text-sm text-gray-400">
-            正在初始化对话…
+            {copy.agentsInitConversation}
           </div>
         )}
       </div>

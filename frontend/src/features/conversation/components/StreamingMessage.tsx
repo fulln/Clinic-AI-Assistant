@@ -1,16 +1,19 @@
 'use client';
 
+import type { Locale } from '@/domains/conversation/entities';
+import { getDisclaimer } from '@/shared/i18n/conversation';
 import { DisclaimerBanner } from './DisclaimerBanner';
 
 interface StreamingMessageProps {
   content: string;
+  locale: Locale;
   isStreaming?: boolean;
   hasDisclaimer?: boolean;
 }
 
-export function StreamingMessage({ content, isStreaming, hasDisclaimer }: StreamingMessageProps) {
+export function StreamingMessage({ content, locale, isStreaming, hasDisclaimer }: StreamingMessageProps) {
   // Strip the disclaimer text from content display if we show it separately
-  const DISCLAIMER = '本内容仅供辅助参考，不构成医疗诊断或治疗建议，请遵医嘱。';
+  const DISCLAIMER = getDisclaimer(locale);
   const displayContent = content.replace(`\n\n${DISCLAIMER}`, '').replace(DISCLAIMER, '').trim();
 
   return (
@@ -22,7 +25,7 @@ export function StreamingMessage({ content, isStreaming, hasDisclaimer }: Stream
         )}
       </div>
       {(hasDisclaimer || content.includes(DISCLAIMER)) && !isStreaming && (
-        <DisclaimerBanner />
+        <DisclaimerBanner locale={locale} />
       )}
     </div>
   );

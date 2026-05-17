@@ -6,7 +6,7 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domains.conversation.entities import (
-    Conversation, ConversationSession, Message, MessageRole
+    Conversation, ConversationSession, Locale, Message, MessageRole
 )
 from src.domains.conversation.repository import IConversationRepository
 from src.infrastructure.db.models import (
@@ -77,6 +77,7 @@ class ConversationRepository(IConversationRepository):
                 active_agent_id=session.active_agent_id,
                 context_snapshot=session.context_snapshot,
                 rag_enabled=session.rag_enabled,
+                locale=session.locale.value,
                 created_at=session.created_at,
                 last_activity_at=session.last_activity_at,
             )
@@ -85,6 +86,7 @@ class ConversationRepository(IConversationRepository):
             row.active_agent_id = session.active_agent_id
             row.context_snapshot = session.context_snapshot
             row.rag_enabled = session.rag_enabled
+            row.locale = session.locale.value
             row.last_activity_at = session.last_activity_at
         await self._session.flush()
         # Also write to Redis cache (24h TTL)
@@ -162,7 +164,7 @@ class ConversationRepository(IConversationRepository):
         return ConversationSession(
             id=row.id, conversation_id=row.conversation_id,
             active_agent_id=row.active_agent_id, context_snapshot=row.context_snapshot or {},
-            rag_enabled=row.rag_enabled, created_at=row.created_at,
+            rag_enabled=row.rag_enabled, locale=Locale(row.locale), created_at=row.created_at,
             last_activity_at=row.last_activity_at,
         )
 

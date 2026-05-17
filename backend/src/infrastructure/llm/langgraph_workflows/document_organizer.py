@@ -1,14 +1,24 @@
 """Document organizer agent workflow."""
 from typing import AsyncIterator
 
+from src.domains.conversation.entities import Locale
+from src.domains.conversation.i18n import get_disclaimer
 from src.infrastructure.llm.langchain_adapter import LLMAdapter
 from src.infrastructure.llm.langgraph_workflows.base_workflow import (
-    WorkflowState, build_base_nodes, DISCLAIMER_TEXT
+    WorkflowState, build_base_nodes
 )
 
-SYSTEM_PROMPT = """你是一位专业的医疗文书整理 AI 助手。
+
+def build_system_prompt(locale: Locale) -> str:
+    if locale == Locale.EN_US:
+        return (
+            "You are a professional medical document organization AI assistant. "
+            "You help physicians organize and format medical notes, discharge summaries, referrals, and similar documents. "
+            "You do not provide clinical diagnoses or treatment advice. Reply in English."
+        )
+    return """你是一位专业的医疗文书整理 AI 助手。
 你帮助医师整理、格式化病历摘要、出院记录、转诊函等医疗文书。
-你不提供临床诊断或治疗建议。整理完成后添加免责声明。"""
+你不提供临床诊断或治疗建议。请使用简体中文回复。"""
 
 
 class DocumentOrganizerWorkflow:
@@ -24,8 +34,8 @@ class DocumentOrganizerWorkflow:
             yield state["refusal_reason"]
             return
 
-        messages = [{"role": "system", "content": SYSTEM_PROMPT}] + state["messages"]
+        messages = [{"role": "system", "content": build_system_prompt(state["locale"])}] + state["messages"]
         async for token in self._llm.astream(messages):
             yield token
 
-        yield f"\n\n{DISCLAIMER_TEXT}"
+        yield f"\n\n{get_disclaimer(state['locale'])}"

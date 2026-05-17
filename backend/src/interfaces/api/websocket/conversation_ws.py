@@ -1,11 +1,12 @@
 """WebSocket handler for bidirectional conversation (human-in-the-loop tool approval)."""
+import asyncio
 import json
+import os
 import uuid
 
-from fastapi import WebSocket, WebSocketDisconnect
 import jwt as _jwt
+from fastapi import WebSocket, WebSocketDisconnect
 from jwt.exceptions import PyJWTError as JWTError
-import os
 
 from src.application.conversation_service import ConversationApplicationService
 
@@ -43,6 +44,7 @@ async def conversation_ws_endpoint(
                 content = msg.get("content", "")
                 agent_id_str = msg.get("agent_id")
                 agent_id = uuid.UUID(agent_id_str) if agent_id_str else None
+                locale = msg.get("locale")
 
                 message_id = str(uuid.uuid4())
                 full_response = []
@@ -54,6 +56,7 @@ async def conversation_ws_endpoint(
                         content=content,
                         agent_id=agent_id,
                         rag_enabled=None,
+                        locale=locale,
                         user_role=user_role,
                     )
                     # stream_message returns an SSE generator; adapt for WebSocket
@@ -65,8 +68,26 @@ async def conversation_ws_endpoint(
                                 token_data = json.loads(data_line[0].replace("data: ", ""))
                                 full_response.append(token_data.get("token", ""))
                                 await websocket.send_text(json.dumps({"type": "token", "token": token_data.get("token", "")}))
+                        elif sse_chunk.startswith("event: start"):
+                            data_line = [l for l in sse_chunk.split("\n") if l.startswith("data:")]
+                            if data_line:
+                                start_data = json.loads(data_line[0].replace("data: ", ""))
+                                await websocket.send_text(json.dumps({"type": "start", **start_data}))
+                        elif sse_chunk.startswith("event: progress"):
+                            data_line = [l for l in sse_chunk.split("\n") if l.startswith("data:")]
+                            if data_line:
+                                progress_data = json.loads(data_line[0].replace("data: ", ""))
+                                await websocket.send_text(json.dumps({"type": "progress", **progress_data}))
+                        elif sse_chunk.startswith("event: disclaimer"):
+                            data_line = [l for l in sse_chunk.split("\n") if l.startswith("data:")]
+                            if data_line:
+                                disclaimer_data = json.loads(data_line[0].replace("data: ", ""))
+                                await websocket.send_text(json.dumps({"type": "disclaimer", **disclaimer_data}))
                         elif sse_chunk.startswith("event: end"):
-                            await websocket.send_text(json.dumps({"type": "end", "message_id": message_id}))
+                            data_line = [l for l in sse_chunk.split("\n") if l.startswith("data:")]
+                            if data_line:
+                                end_data = json.loads(data_line[0].replace("data: ", ""))
+                                await websocket.send_text(json.dumps({"type": "end", **end_data}))
                         elif sse_chunk.startswith("event: error"):
                             data_line = [l for l in sse_chunk.split("\n") if l.startswith("data:")]
                             if data_line:
@@ -87,6 +108,3 @@ async def conversation_ws_endpoint(
 
     except WebSocketDisconnect:
         pass
-
-
-import asyncio  # noqa: E402 — placed here to avoid circular import with jwt

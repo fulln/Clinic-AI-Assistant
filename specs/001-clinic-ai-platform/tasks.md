@@ -124,6 +124,19 @@
 - [x] T071 [P] [US2] Create `AgentSelector` component in `frontend/src/features/conversation/components/AgentSelector.tsx`: dropdown of published agents filtered by current user role; triggers PATCH session on selection change
 - [x] T072 [US2] Create `ConversationPanel` root component in `frontend/src/features/conversation/components/ConversationPanel.tsx`: composes AgentSelector + MessageList + MessageInput + DisclaimerBanner; accepts optional `agentId` prop for demo mode binding (depends on T067–T071)
 - [x] T073 [US2] Create main conversation page in `frontend/src/app/(dashboard)/conversation/page.tsx`: renders `ConversationPanel`; loads or creates conversation on mount (depends on T066, T072)
+- [x] T123 [US2] Extend conversation domain locale model in `backend/src/domains/conversation/entities.py` and `frontend/src/domains/conversation/entities.ts`: add supported locale enum/value set (`zh-CN`, `en-US`), default session locale, and assistant message locale metadata
+- [x] T124 [US2] Persist session locale in `backend/src/infrastructure/db/models.py`, `backend/src/infrastructure/db/repositories/conversation_repo.py`, and a new Alembic migration under `backend/src/infrastructure/db/migrations/versions/`: add `conversation_sessions.locale`, backfill existing rows to `zh-CN`, and preserve locale on session updates
+- [x] T125 [US2] Update conversation API schemas and router in `backend/src/interfaces/api/schemas/conversation_schemas.py` and `backend/src/interfaces/api/routers/conversations.py`: accept/return `locale` on create conversation, send message, and patch session endpoints per `contracts/conversation-api.md`
+- [x] T126 [US2] Introduce localized compliance/system copy catalog in `backend/src/domains/conversation/services.py` or a new `backend/src/domains/conversation/i18n.py`: centralize disclaimer text, refusal copy, and backend error/progress message templates for `zh-CN` and `en-US`
+- [x] T127 [US2] Propagate effective locale through `backend/src/application/conversation_service.py`: persist per-message locale, localize SSE `start/progress/disclaimer/error/end` payloads, and include locale metadata in saved assistant messages and audit details
+- [x] T128 [US2] Localize prompt construction in `backend/src/application/conversation_service.py` and `backend/src/domains/agent/services.py`: ensure supervisor routing and summary prompts instruct the model to answer in the active session locale rather than inferring language from user input
+- [x] T129 [P] [US2] Update all LangGraph workflows in `backend/src/infrastructure/llm/langgraph_workflows/`: pass locale into workflow state, localize system prompts where needed, and inject exact locale-specific disclaimer constants instead of hard-coded Chinese copy
+- [x] T130 [P] [US2] Align streaming and WebSocket locale behavior in `frontend/src/features/conversation/hooks/useSSEStream.ts` and `backend/src/interfaces/api/websocket/conversation_ws.py`: carry locale through stream events and keep future WS conversation flow compatible with the same session-level locale contract
+- [x] T131 [P] [US2] Create lightweight frontend dictionary layer in `frontend/src/shared/i18n/`: add locale dictionaries and helpers for conversation input placeholder, error text, progress labels, and disclaimer copy without adding a new external i18n dependency
+- [x] T132 [US2] Extend `frontend/src/features/conversation/hooks/useConversation.ts` to read/write session locale: include locale in create/send/patch requests, keep multiple open conversations isolated by their own locale, and hydrate locale from conversation detail responses
+- [x] T133 [P] [US2] Add locale switch UI in `frontend/src/features/conversation/components/ConversationPanel.tsx` and supporting conversation components: provide a session-scoped language toggle and ensure `MessageList.tsx` / `StreamingMessage.tsx` / `DisclaimerBanner.tsx` render localized system copy while preserving historical message content
+- [x] T134 [US2] Localize conversation entry surfaces in `frontend/src/app/(dashboard)/conversation/page.tsx`, `frontend/src/features/conversation/components/MessageInput.tsx`, and related components: make default titles, empty states, and send/streaming UX copy follow the active locale
+- [x] T135 [US2] Reconcile specs and developer docs after implementation in `specs/001-clinic-ai-platform/contracts/conversation-api.md`, `specs/001-clinic-ai-platform/data-model.md`, and `docs/05-unified-conversation-context-and-shared-chat-component.md`: document the final locale flow and effective session-language contract
 
 **Checkpoint**: Unified conversation with SSE streaming, disclaimer, context persistence, and agent switching all work end-to-end.
 
@@ -259,6 +272,9 @@ T052 medical_auxiliary  ||  T053 document_organizer  ||  T054 operations_consult
 # US2 frontend: After T066 (useConversation) is done, parallelize:
 T067 DisclaimerBanner  ||  T068 StreamingMessage  ||  T069 MessageList  ||  T070 MessageInput  ||  T071 AgentSelector
 
+# US2 i18n follow-up: After T127 (locale propagation) is done, parallelize:
+T129 workflow localization  ||  T130 stream/WS locale alignment  ||  T131 frontend dictionaries
+
 # US4: After T089 (ChunkingService) is done, parallelize:
 T090 Celery task  ||  T087 pgvector adapter (independent)
 
@@ -306,12 +322,12 @@ With 2+ developers after Phase 2 completion:
 | 1 Setup | — | T001–T013 (13) | Docker, deps, linting |
 | 2 Foundation | — | T014–T025 (12) | DB, Redis, app factory, audit infra |
 | 3 US1 P1 🎯 | Login | T026–T041 (16) | Auth backend + frontend |
-| 4 US2 P1 🎯 | Conversation | T042–T073 (32) | LangGraph + SSE + unified UI |
+| 4 US2 P1 🎯 | Conversation | T042–T073, T123–T135 (45) | LangGraph + SSE + unified UI + session locale i18n |
 | 5 US3 P2 | Catalog | T074–T082 (9) | Agent browse + demo mode |
 | 6 US4 P2 | RAG | T083–T101 (19) | Vector search + doctor KB |
 | 7 US5 P3 | Batch Publish | T102–T113 (12) | Admin publish pipeline + seed scripts |
 | 8 Polish | — | T114–T122 (9) | Audit, security, validation |
-| **Total** | | **122 tasks** | |
+| **Total** | | **135 tasks** | |
 
 - **[P] parallelizable tasks**: ~60 tasks can run in parallel within their phase
 - **MVP scope**: Phases 1–4 (US1 + US2) = 73 tasks

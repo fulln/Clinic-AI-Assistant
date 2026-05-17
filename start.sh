@@ -57,7 +57,7 @@ info "Running DB migrations..."
 # ── Seed admin (idempotent) ───────────────────────────────────────────────────
 info "Seeding admin user..."
 (cd "$BACKEND" && "$PYTHON" -m scripts.seed_admin \
-  --username admin --password admin123 --display-name "管理员" 2>&1) \
+  --username admin --password 123456 --display-name "管理员" 2>&1) \
   | grep -v "Traceback\|File \"/\|raise\|Error" || true
 
 # ── Frontend deps ─────────────────────────────────────────────────────────────
@@ -97,10 +97,10 @@ done
 # ── Seed agents (if backend is up) ───────────────────────────────────────────
 if curl -s http://localhost:8000/health | grep -q '"status":"ok"' 2>/dev/null; then
   (cd "$BACKEND" && \
-    ADMIN_USERNAME=admin ADMIN_PASSWORD=admin123 API_BASE_URL=http://localhost:8000 \
+    ADMIN_USERNAME=admin ADMIN_PASSWORD=123456 API_BASE_URL=http://localhost:8000 \
     "$PYTHON" -m scripts.seed_agents --config config/agents/formal_agents.json 2>&1 | tail -5) &
   (cd "$BACKEND" && \
-    ADMIN_USERNAME=admin ADMIN_PASSWORD=admin123 API_BASE_URL=http://localhost:8000 \
+    ADMIN_USERNAME=admin ADMIN_PASSWORD=123456 API_BASE_URL=http://localhost:8000 \
     "$PYTHON" -m scripts.seed_agents --config config/agents/demo_agents.json 2>&1 | tail -5) &
 fi
 
@@ -110,7 +110,7 @@ echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━
 echo -e "  Frontend  →  ${GREEN}http://localhost:3000${NC}"
 echo -e "  Backend   →  ${GREEN}http://localhost:8000${NC}"
 echo -e "  API Docs  →  ${GREEN}http://localhost:8000/docs${NC}"
-echo -e "  Login     →  admin / admin123"
+echo -e "  Login     →  admin / 123456"
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 echo "Logs: tail -f .logs/backend.log  |  .logs/celery.log  |  .logs/frontend.log"

@@ -1,12 +1,17 @@
+import type { Locale } from '@/domains/conversation/entities';
+import { getSiteCopy } from '@/shared/i18n/site';
+
 export class AuthDomainService {
-  static validateUsername(username: string): string | null {
-    if (!username.trim()) return '请输入用户名';
-    if (username.trim().length < 3) return '用户名至少3个字符';
+  static validateUsername(username: string, locale: Locale): string | null {
+    const copy = getSiteCopy(locale);
+    if (!username.trim()) return copy.authUsernameRequired;
+    if (username.trim().length < 3) return copy.authUsernameMin;
     return null;
   }
 
-  static validatePassword(password: string): string | null {
-    if (!password) return '请输入密码';
+  static validatePassword(password: string, locale: Locale): string | null {
+    const copy = getSiteCopy(locale);
+    if (!password) return copy.authPasswordRequired;
     return null;
   }
 }

@@ -1,15 +1,19 @@
 'use client';
 
 import { useState, useRef, KeyboardEvent } from 'react';
+import type { Locale } from '@/domains/conversation/entities';
+import { t } from '@/shared/i18n/conversation';
 
 interface MessageInputProps {
   onSend: (content: string) => void;
+  locale: Locale;
   disabled?: boolean;
 }
 
-export function MessageInput({ onSend, disabled }: MessageInputProps) {
+export function MessageInput({ onSend, locale, disabled }: MessageInputProps) {
   const [value, setValue] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const copy = t(locale);
 
   const handleSend = () => {
     const trimmed = value.trim();
@@ -43,7 +47,7 @@ export function MessageInput({ onSend, disabled }: MessageInputProps) {
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={handleKeyDown}
           onInput={handleInput}
-          placeholder={disabled ? 'AI 正在回复中...' : '输入消息（Enter 发送，Shift+Enter 换行）'}
+          placeholder={disabled ? copy.placeholderStreaming : copy.placeholderReady}
           disabled={disabled}
           rows={1}
           maxLength={4000}
@@ -54,7 +58,7 @@ export function MessageInput({ onSend, disabled }: MessageInputProps) {
           disabled={disabled || !value.trim()}
           className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
-          发送
+          {copy.send}
         </button>
       </div>
       <p className="mt-1 text-right text-xs text-gray-400">{value.length}/4000</p>

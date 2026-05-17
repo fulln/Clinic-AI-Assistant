@@ -6,6 +6,8 @@ import apiClient from '@/shared/api/client';
 import { useAuthStore } from '@/shared/store/authStore';
 import { AuthDomainService } from '@/domains/auth/services';
 import type { User } from '@/domains/auth/entities';
+import { useLocaleStore } from '@/shared/store/localeStore';
+import { getSiteCopy } from '@/shared/i18n/site';
 
 interface LoginError {
   username?: string;
@@ -16,12 +18,14 @@ interface LoginError {
 export function useAuth() {
   const router = useRouter();
   const { setUser, setToken, clearAuth, user, isAuthenticated } = useAuthStore();
+  const locale = useLocaleStore((state) => state.locale);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<LoginError>({});
+  const copy = getSiteCopy(locale);
 
   async function login(username: string, password: string) {
-    const usernameError = AuthDomainService.validateUsername(username);
-    const passwordError = AuthDomainService.validatePassword(password);
+    const usernameError = AuthDomainService.validateUsername(username, locale);
+    const passwordError = AuthDomainService.validatePassword(password, locale);
     if (usernameError || passwordError) {
       setErrors({ username: usernameError ?? undefined, password: passwordError ?? undefined });
       return;
@@ -43,7 +47,7 @@ export function useAuth() {
       setUser(domainUser);
       router.push('/conversation');
     } catch (err: any) {
-      setErrors({ general: err?.response?.data?.detail ?? '登录失败，请重试' });
+      setErrors({ general: err?.response?.data?.detail ?? copy.authLoginFailed });
     } finally {
       setLoading(false);
     }

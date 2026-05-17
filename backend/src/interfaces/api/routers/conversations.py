@@ -23,6 +23,7 @@ from src.interfaces.api.schemas.conversation_schemas import (
     SessionInfo,
     SessionUpdateRequest,
 )
+from src.domains.conversation.entities import Locale
 
 router = APIRouter()
 
@@ -43,11 +44,16 @@ async def create_conversation(
     db: AsyncSession = Depends(get_db),
 ):
     svc = _build_service(db)
-    conv, session = await svc.create_conversation(current_user.id, body.title, body.agent_id)
+    conv, session = await svc.create_conversation(
+        current_user.id,
+        body.title,
+        body.agent_id,
+        body.locale,
+    )
     return ConversationResponse(
         id=conv.id, title=conv.title, user_id=conv.user_id,
         session_id=session.id, active_agent_id=session.active_agent_id,
-        rag_enabled=session.rag_enabled, created_at=conv.created_at,
+        rag_enabled=session.rag_enabled, locale=session.locale, created_at=conv.created_at,
     )
 
 
@@ -85,11 +91,15 @@ async def get_conversation(
             id=session.id if session else uuid.uuid4(),
             active_agent_id=session.active_agent_id if session else None,
             rag_enabled=session.rag_enabled if session else False,
+            locale=session.locale if session else Locale.ZH_CN,
         ),
         messages=[
             MessageResponse(
                 id=m.id, role=m.role.value, content=m.content,
-                agent_id=m.agent_id, has_disclaimer=m.has_disclaimer, created_at=m.created_at,
+                agent_id=m.agent_id,
+                has_disclaimer=m.has_disclaimer,
+                metadata=m.metadata,
+                created_at=m.created_at,
             )
             for m in messages if not m.is_deleted
         ],
@@ -111,6 +121,7 @@ async def send_message(
             content=body.content,
             agent_id=body.agent_id,
             rag_enabled=body.rag_enabled,
+            locale=body.locale,
             user_role=current_user.role.value,
         ),
         media_type="text/event-stream",
@@ -128,10 +139,13 @@ async def update_session(
     svc = _build_service(db)
     session = await svc.update_session(
         conversation_id, current_user.id,
-        body.active_agent_id, body.rag_enabled, current_user.role.value,
+        body.active_agent_id, body.rag_enabled, body.locale, current_user.role.value,
     )
     return SessionInfo(
-        id=session.id, active_agent_id=session.active_agent_id, rag_enabled=session.rag_enabled
+        id=session.id,
+        active_agent_id=session.active_agent_id,
+        rag_enabled=session.rag_enabled,
+        locale=session.locale,
     )
 
 

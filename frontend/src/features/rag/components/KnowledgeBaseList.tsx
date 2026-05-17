@@ -4,10 +4,11 @@
  * T099 — Expandable knowledge base list with documents.
  */
 
-import { useState } from 'react';
 import type { Document, KnowledgeBase } from '@/domains/rag/entities';
 import { DocumentStatusBadge } from './DocumentStatusBadge';
 import { DocumentUploader } from './DocumentUploader';
+import type { Locale } from '@/domains/conversation/entities';
+import { getSiteCopy } from '@/shared/i18n/site';
 
 interface Props {
   kbs: KnowledgeBase[];
@@ -18,6 +19,7 @@ interface Props {
   onDeleteKb: (kbId: string) => void;
   onDeleteDocument: (kbId: string, docId: string) => void;
   onUpload: (kbId: string, file: File) => Promise<void>;
+  locale: Locale;
 }
 
 function formatBytes(bytes: number): string {
@@ -35,22 +37,25 @@ export function KnowledgeBaseList({
   onDeleteKb,
   onDeleteDocument,
   onUpload,
+  locale,
 }: Props) {
+  const copy = getSiteCopy(locale);
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h2 className="text-base font-semibold text-gray-800">知识库列表</h2>
+        <h2 className="text-base font-semibold text-gray-800">{copy.ragKbList}</h2>
         <button
           type="button"
           onClick={onCreateKb}
           className="text-sm bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors"
         >
-          创建知识库
+          {copy.ragCreateKb}
         </button>
       </div>
 
       {kbs.length === 0 && (
-        <p className="text-sm text-gray-400 py-4 text-center">暂无知识库，请点击上方按钮创建</p>
+        <p className="text-sm text-gray-400 py-4 text-center">{copy.ragEmptyKb}</p>
       )}
 
       {kbs.map((kb) => {
@@ -72,7 +77,7 @@ export function KnowledgeBaseList({
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
                 <span className="font-medium text-sm text-gray-800">{kb.name}</span>
-                <span className="text-xs text-gray-400">({kb.documentCount} 个文档)</span>
+                <span className="text-xs text-gray-400">{copy.ragDocCount(kb.documentCount)}</span>
               </div>
               <button
                 type="button"
@@ -82,7 +87,7 @@ export function KnowledgeBaseList({
                 }}
                 className="text-xs text-red-500 hover:text-red-700 px-2 py-1 rounded hover:bg-red-50 transition-colors"
               >
-                删除知识库
+                {copy.ragDeleteKb}
               </button>
             </div>
 
@@ -91,7 +96,7 @@ export function KnowledgeBaseList({
               <div className="border-t border-gray-100 px-4 py-3 space-y-4 bg-gray-50">
                 {/* Document list */}
                 {documents.length === 0 ? (
-                  <p className="text-xs text-gray-400">暂无文档</p>
+                  <p className="text-xs text-gray-400">{copy.ragEmptyDoc}</p>
                 ) : (
                   <ul className="space-y-2">
                     {documents.map((doc) => (
@@ -106,13 +111,13 @@ export function KnowledgeBaseList({
                           </span>
                         </div>
                         <div className="flex items-center gap-2 ml-2 flex-shrink-0">
-                          <DocumentStatusBadge status={doc.status} />
+                          <DocumentStatusBadge status={doc.status} locale={locale} />
                           <button
                             type="button"
                             onClick={() => onDeleteDocument(kb.id, doc.id)}
                             className="text-xs text-red-400 hover:text-red-600"
                           >
-                            删除
+                            {copy.ragDeleteDoc}
                           </button>
                         </div>
                       </li>
@@ -123,6 +128,7 @@ export function KnowledgeBaseList({
                 {/* Uploader */}
                 <DocumentUploader
                   onUpload={(file) => onUpload(kb.id, file)}
+                  locale={locale}
                 />
               </div>
             )}

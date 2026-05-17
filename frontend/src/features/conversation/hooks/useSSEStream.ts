@@ -1,19 +1,22 @@
 'use client';
 
 import { useCallback, useRef } from 'react';
+import type { Locale } from '@/domains/conversation/entities';
+import { normalizeLocale, t } from '@/shared/i18n/conversation';
 
 interface SSECallbacks {
   onToken: (token: string) => void;
-  onDisclaimer: (text: string) => void;
+  onDisclaimer: (text: string, locale: Locale) => void;
   onProgress: (progress: StreamProgress) => void;
-  onEnd: (messageId: string, latencyMs: number) => void;
-  onError: (code: string, message: string) => void;
-  onStart: (messageId: string, agentId: string | null) => void;
+  onEnd: (messageId: string, latencyMs: number, locale: Locale) => void;
+  onError: (code: string, message: string, locale: Locale) => void;
+  onStart: (messageId: string, agentId: string | null, locale: Locale) => void;
 }
 
 export interface StreamProgress {
   stage: string;
   message: string;
+  locale?: Locale;
   agent_id?: string | null;
   agent_name?: string | null;
   workflow_type?: string | null;
@@ -39,6 +42,7 @@ export function useSSEStream(baseUrl: string) {
       content: string,
       agentId: string | null,
       ragEnabled: boolean | null,
+      locale: Locale,
       callbacks: SSECallbacks
     ) => {
       abortRef.current?.abort();
@@ -60,6 +64,7 @@ export function useSSEStream(baseUrl: string) {
               content,
               agent_id: agentId ?? undefined,
               rag_enabled: ragEnabled ?? undefined,
+              locale,
             }),
             signal: controller.signal,
             credentials: 'include',
@@ -68,7 +73,7 @@ export function useSSEStream(baseUrl: string) {
 
         if (!response.ok) {
           const err = await response.json().catch(() => ({}));
-          callbacks.onError('http_error', err?.detail ?? `HTTP ${response.status}`);
+          callbacks.onError('http_error', err?.detail ?? `HTTP ${response.status}`, locale);
           return;
         }
 
@@ -94,12 +99,13 @@ export function useSSEStream(baseUrl: string) {
             if (!data) continue;
             try {
               const parsed = JSON.parse(data);
-              if (eventType === 'start') callbacks.onStart(parsed.message_id, parsed.agent_id);
+              const eventLocale = normalizeLocale(parsed.locale ?? locale);
+              if (eventType === 'start') callbacks.onStart(parsed.message_id, parsed.agent_id, eventLocale);
               else if (eventType === 'token') callbacks.onToken(parsed.token);
               else if (eventType === 'progress') callbacks.onProgress(parsed);
-              else if (eventType === 'disclaimer') callbacks.onDisclaimer(parsed.text);
-              else if (eventType === 'end') callbacks.onEnd(parsed.message_id, parsed.latency_ms);
-              else if (eventType === 'error') callbacks.onError(parsed.code, parsed.message);
+              else if (eventType === 'disclaimer') callbacks.onDisclaimer(parsed.text, eventLocale);
+              else if (eventType === 'end') callbacks.onEnd(parsed.message_id, parsed.latency_ms, eventLocale);
+              else if (eventType === 'error') callbacks.onError(parsed.code, parsed.message, eventLocale);
             } catch {
               // ignore malformed SSE data
             }
@@ -107,7 +113,7 @@ export function useSSEStream(baseUrl: string) {
         }
       } catch (err: any) {
         if (err?.name !== 'AbortError') {
-          callbacks.onError('network_error', err?.message ?? '网络连接失败，请检查网络后重试');
+          callbacks.onError('network_error', err?.message ?? t(locale).networkError, locale);
         }
       }
     },

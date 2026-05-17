@@ -3,7 +3,10 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
 
-DISCLAIMER_TEXT = "本内容仅供辅助参考，不构成医疗诊断或治疗建议，请遵医嘱。"
+
+class Locale(str, enum.Enum):
+    ZH_CN = "zh-CN"
+    EN_US = "en-US"
 
 
 class MessageRole(str, enum.Enum):
@@ -42,11 +45,16 @@ class ConversationSession:
     active_agent_id: uuid.UUID | None = None
     context_snapshot: dict = field(default_factory=dict)
     rag_enabled: bool = False
+    locale: Locale = Locale.ZH_CN
     created_at: datetime = field(default_factory=datetime.utcnow)
     last_activity_at: datetime = field(default_factory=datetime.utcnow)
 
     def switch_agent(self, agent_id: uuid.UUID) -> None:
         self.active_agent_id = agent_id
+        self.last_activity_at = datetime.utcnow()
+
+    def set_locale(self, locale: Locale) -> None:
+        self.locale = locale
         self.last_activity_at = datetime.utcnow()
 
     def touch(self) -> None:

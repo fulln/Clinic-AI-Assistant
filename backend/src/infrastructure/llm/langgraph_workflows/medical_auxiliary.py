@@ -5,14 +5,23 @@ from src.infrastructure.llm.langchain_adapter import LLMAdapter
 from src.infrastructure.llm.langgraph_workflows.base_workflow import (
     WorkflowState,
     build_base_nodes,
-    should_refuse,
-    DISCLAIMER_TEXT,
 )
+from src.domains.conversation.entities import Locale
+from src.domains.conversation.i18n import get_disclaimer
 
-SYSTEM_PROMPT = """你是一位专业的医疗辅助 AI 助手，服务于私立诊所。
+
+def build_system_prompt(locale: Locale) -> str:
+    if locale == Locale.EN_US:
+        return (
+            "You are a professional medical auxiliary AI assistant for a private clinic. "
+            "You may only provide medical auxiliary dialogue, general symptom education, and visit-process guidance. "
+            "You must not provide definitive diagnoses, prescriptions, specific medication dosages, or treatment plans. "
+            "Reply in English."
+        )
+    return """你是一位专业的医疗辅助 AI 助手，服务于私立诊所。
 你只能提供：医疗辅助对话、常见病症科普、就诊流程指引。
 你严格禁止：给出确定性诊断、开具处方、推荐具体用药剂量、制定治疗方案。
-每次回复末尾必须包含免责声明。"""
+请使用简体中文回复。"""
 
 
 class MedicalAuxiliaryWorkflow:
@@ -29,8 +38,8 @@ class MedicalAuxiliaryWorkflow:
             yield state["refusal_reason"]
             return
 
-        messages = [{"role": "system", "content": SYSTEM_PROMPT}] + state["messages"]
+        messages = [{"role": "system", "content": build_system_prompt(state["locale"])}] + state["messages"]
         async for token in self._llm.astream(messages):
             yield token
 
-        yield f"\n\n{DISCLAIMER_TEXT}"
+        yield f"\n\n{get_disclaimer(state['locale'])}"

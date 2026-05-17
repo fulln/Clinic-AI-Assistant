@@ -3,7 +3,8 @@ from typing import Any, AsyncIterator, TypedDict
 
 from langgraph.graph import StateGraph, END
 
-from src.domains.conversation.entities import DISCLAIMER_TEXT
+from src.domains.conversation.entities import Locale
+from src.domains.conversation.i18n import get_disclaimer, get_refusal_message
 from src.infrastructure.llm.langchain_adapter import LLMAdapter
 
 # Intent patterns that must be refused (Constitution Principle I)
@@ -18,6 +19,7 @@ class WorkflowState(TypedDict):
     session_context: dict
     agent_id: str
     user_role: str
+    locale: Locale
     rag_enabled: bool
     rag_chunks: list[dict]
     response_tokens: list[str]
@@ -40,7 +42,7 @@ def build_base_nodes(llm: LLMAdapter):
         for pattern in REFUSED_INTENTS:
             if pattern in last_user_msg.lower():
                 state["refused"] = True
-                state["refusal_reason"] = "该请求超出本平台服务范围，请咨询执业医师。"
+                state["refusal_reason"] = get_refusal_message(state["locale"])
                 return state
         state["refused"] = False
         return state
@@ -49,7 +51,7 @@ def build_base_nodes(llm: LLMAdapter):
         """Appends mandatory medical disclaimer to response."""
         state["has_disclaimer"] = True
         if state["response_tokens"]:
-            state["response_tokens"].append(f"\n\n{DISCLAIMER_TEXT}")
+            state["response_tokens"].append(f"\n\n{get_disclaimer(state['locale'])}")
         return state
 
     async def context_saver(state: WorkflowState) -> WorkflowState:

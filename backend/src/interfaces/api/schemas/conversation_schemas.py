@@ -1,18 +1,22 @@
 import uuid
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
+
+from src.domains.conversation.entities import Locale
 
 
 class CreateConversationRequest(BaseModel):
     title: Optional[str] = None
     agent_id: Optional[uuid.UUID] = None
+    locale: Locale = Locale.ZH_CN
 
 
 class SessionInfo(BaseModel):
     id: uuid.UUID
     active_agent_id: Optional[uuid.UUID] = None
     rag_enabled: bool = False
+    locale: Locale = Locale.ZH_CN
 
 
 class ConversationResponse(BaseModel):
@@ -22,6 +26,7 @@ class ConversationResponse(BaseModel):
     session_id: Optional[uuid.UUID] = None
     active_agent_id: Optional[uuid.UUID] = None
     rag_enabled: bool = False
+    locale: Locale = Locale.ZH_CN
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -46,6 +51,7 @@ class MessageResponse(BaseModel):
     content: str
     agent_id: Optional[uuid.UUID] = None
     has_disclaimer: bool = False
+    metadata: dict = Field(default_factory=dict)
     created_at: datetime
 
 
@@ -60,6 +66,7 @@ class SendMessageRequest(BaseModel):
     content: str
     agent_id: Optional[uuid.UUID] = None
     rag_enabled: Optional[bool] = None
+    locale: Optional[Locale] = None
 
     @field_validator("content")
     @classmethod
@@ -74,3 +81,4 @@ class SendMessageRequest(BaseModel):
 class SessionUpdateRequest(BaseModel):
     active_agent_id: Optional[uuid.UUID] = None
     rag_enabled: Optional[bool] = None
+    locale: Optional[Locale] = None

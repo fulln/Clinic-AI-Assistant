@@ -256,6 +256,7 @@ class ConversationSessionModel(Base):
     )
     context_snapshot: Mapped[dict] = mapped_column(JSON, default=dict)
     rag_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    locale: Mapped[str] = mapped_column(String(10), default="zh-CN", nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), default=_now)
     last_activity_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), default=_now)
 

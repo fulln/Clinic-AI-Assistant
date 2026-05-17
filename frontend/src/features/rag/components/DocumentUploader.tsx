@@ -6,10 +6,13 @@
 
 import { useCallback, useRef, useState } from 'react';
 import { RAGDomainService } from '@/domains/rag/services';
+import type { Locale } from '@/domains/conversation/entities';
+import { getSiteCopy } from '@/shared/i18n/site';
 
 interface Props {
   onUpload: (file: File) => Promise<void>;
   disabled?: boolean;
+  locale: Locale;
 }
 
 function formatBytes(bytes: number): string {
@@ -18,18 +21,19 @@ function formatBytes(bytes: number): string {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
-export function DocumentUploader({ onUpload, disabled = false }: Props) {
+export function DocumentUploader({ onUpload, disabled = false, locale }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const copy = getSiteCopy(locale);
 
-  const handleFile = (file: File) => {
-    const error = RAGDomainService.validateFile(file);
+  const handleFile = useCallback((file: File) => {
+    const error = RAGDomainService.validateFile(file, locale);
     setValidationError(error);
     setSelectedFile(error ? null : file);
-  };
+  }, [locale]);
 
   const handleDrop = useCallback(
     (e: React.DragEvent<HTMLDivElement>) => {
@@ -39,7 +43,7 @@ export function DocumentUploader({ onUpload, disabled = false }: Props) {
       const file = e.dataTransfer.files[0];
       if (file) handleFile(file);
     },
-    [disabled]
+    [disabled, handleFile]
   );
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
@@ -90,10 +94,10 @@ export function DocumentUploader({ onUpload, disabled = false }: Props) {
           disabled={disabled}
         />
         <p className="text-sm text-gray-500">
-          拖拽文件至此或
-          <span className="text-blue-600 font-medium"> 点击选择文件</span>
+          {copy.ragUploadHintPrefix}
+          <span className="text-blue-600 font-medium">{copy.ragUploadHintAction}</span>
         </p>
-        <p className="text-xs text-gray-400 mt-1">支持 PDF、TXT、DOCX、Markdown，最大 50 MB</p>
+        <p className="text-xs text-gray-400 mt-1">{copy.ragUploadHintFormats}</p>
       </div>
 
       {/* Selected file info */}
@@ -124,7 +128,7 @@ export function DocumentUploader({ onUpload, disabled = false }: Props) {
           }
         `}
       >
-        {isUploading ? '上传中…' : '上传文件'}
+        {isUploading ? copy.ragUploading : copy.ragUploadButton}
       </button>
     </div>
   );

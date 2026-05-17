@@ -8,6 +8,7 @@
 - 对话页可选择智能体；演示详情页可预绑定智能体。
 - 用户不指定智能体时，后端主控 agent 自动选择正式子 agent。
 - 同一会话保留历史消息和 active agent。
+- 同一会话保留独立 `locale`，并用它统一驱动页面文案和 AI 回复语言。
 - 医疗安全、免责声明、审计、RAG 权限在后端统一执行。
 - 前端只关心统一 SSE 事件，不关心具体 workflow 实现。
 
@@ -60,7 +61,7 @@ MessageInput.onSend
   -> end 时追加 assistant message
 ```
 
-当前 SSE 使用 `fetch` 读取 text/event-stream，而不是浏览器原生 `EventSource`，因此可以在 POST 请求体中携带 `content`、`agent_id`、`rag_enabled`。
+当前 SSE 使用 `fetch` 读取 text/event-stream，而不是浏览器原生 `EventSource`，因此可以在 POST 请求体中携带 `content`、`agent_id`、`rag_enabled`、`locale`。
 
 ## 统一会话数据模型
 
@@ -78,6 +79,7 @@ ConversationSession
 ├── active_agent_id
 ├── context_snapshot
 ├── rag_enabled
+├── locale
 └── last_activity_at
 
 Message
@@ -96,8 +98,9 @@ Message
 原则：
 
 - `Conversation` 是用户看到的一条对话。
-- `ConversationSession` 保存当前活跃智能体、RAG 开关和上下文快照。
+- `ConversationSession` 保存当前活跃智能体、RAG 开关、会话语言和上下文快照。
 - `Message.agent_id` 标记 assistant 消息由哪个智能体生成。
+- `Message.metadata.locale` 记录 assistant 消息生成时的有效语言，便于免责声明渲染和审计追踪。
 - user message 可以没有 `agent_id`，由请求或 session 决定本轮执行智能体。
 
 ## API 协议
@@ -109,7 +112,8 @@ POST /api/v1/conversations
 
 {
   "title": "可选",
-  "agent_id": "uuid 或 null"
+  "agent_id": "uuid 或 null",
+  "locale": "zh-CN | en-US"
 }
 ```
 
@@ -127,7 +131,8 @@ POST /api/v1/conversations/{conversation_id}/messages
 {
   "content": "用户输入",
   "agent_id": "uuid 或 null",
-  "rag_enabled": true
+  "rag_enabled": true,
+  "locale": "zh-CN | en-US"
 }
 ```
 
@@ -138,7 +143,8 @@ PATCH /api/v1/conversations/{conversation_id}/session
 
 {
   "active_agent_id": "uuid 或 null",
-  "rag_enabled": true
+  "rag_enabled": true,
+  "locale": "zh-CN | en-US"
 }
 ```
 
@@ -152,12 +158,12 @@ DELETE /api/v1/conversations/{conversation_id}
 
 | 事件 | data |
 | --- | --- |
-| `start` | `message_id`, `agent_id`, `session_id` |
-| `progress` | `stage`, `message`, `agent_id`, `agent_name`, `workflow_type`, `artifacts` |
+| `start` | `message_id`, `agent_id`, `session_id`, `locale` |
+| `progress` | `stage`, `message`, `agent_id`, `agent_name`, `workflow_type`, `artifacts`, `locale` |
 | `token` | `token` |
-| `disclaimer` | `text` |
-| `end` | `message_id`, `latency_ms` |
-| `error` | `code`, `message` |
+| `disclaimer` | `text`, `locale` |
+| `end` | `message_id`, `latency_ms`, `locale` |
+| `error` | `code`, `message`, `locale` |
 
 `progress` 是当前多 agent 编排的重要可视化协议，典型阶段包括：
 
@@ -178,9 +184,11 @@ DELETE /api/v1/conversations/{conversation_id}
 发送消息
   -> 校验 conversation 属于当前用户
   -> 找到 session，不存在则创建
+  -> 解析 effective_locale = request.locale || session.locale
   -> 解析 effective_agent_id = request.agent_id || session.active_agent_id
   -> 校验角色是否可访问智能体
   -> doctor 可更新 rag_enabled
+  -> session.locale 持久化为本轮会话语言
   -> 保存 user message
   -> 读取最近 20 条消息作为 LLM 上下文
   -> 主控编排或指定智能体执行
@@ -194,6 +202,13 @@ DELETE /api/v1/conversations/{conversation_id}
 ```
 
 当前实现会读取最近 20 条消息作为 LLM 输入；`context_snapshot` 字段存在于 session 中，供后续扩展压缩摘要和 Redis 热缓存。
+
+## 国际化约束
+
+- 前端语言切换是 session-scoped，而不是全局用户级；同一用户可以同时打开中英文两个会话。
+- 后端 supervisor prompt、child workflow system prompt、SSE progress/error/disclaimer 统一使用 `ConversationSession.locale`。
+- 医疗免责声明和拒绝提示使用预定义常量，不依赖模型自由翻译。
+- 历史消息不会因切换语言被重写；只有切换后的新回复使用新语言。
 
 ## 主控与子 agent 上下文
 

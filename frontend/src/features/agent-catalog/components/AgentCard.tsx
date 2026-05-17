@@ -1,17 +1,22 @@
 import Link from 'next/link';
 import type { Agent } from '@/domains/agent/entities';
 import { AgentTypeBadge } from './AgentTypeBadge';
+import type { Locale } from '@/domains/conversation/entities';
+import { getSiteCopy } from '@/shared/i18n/site';
 
 interface AgentCardProps {
   agent: Agent;
+  locale: Locale;
 }
 
-export function AgentCard({ agent }: AgentCardProps) {
+export function AgentCard({ agent, locale }: AgentCardProps) {
+  const copy = getSiteCopy(locale);
+
   return (
     <div className="flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition hover:shadow-md">
       <div className="flex items-start justify-between gap-2">
         <h3 className="text-base font-semibold text-gray-900 leading-snug">{agent.name}</h3>
-        <AgentTypeBadge agentType={agent.agentType} />
+        <AgentTypeBadge agentType={agent.agentType} locale={locale} />
       </div>
 
       <p className="line-clamp-2 text-sm text-gray-500">{agent.description}</p>
@@ -35,7 +40,7 @@ export function AgentCard({ agent }: AgentCardProps) {
             href={`/agents/${agent.id}`}
             className="inline-flex items-center rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-1"
           >
-            进入演示
+            {copy.agentsDemoEnter}
           </Link>
         </div>
       )}

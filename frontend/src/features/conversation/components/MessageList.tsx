@@ -1,0 +1,176 @@
+'use client';
+
+import { useEffect, useRef } from 'react';
+import { StreamingMessage } from './StreamingMessage';
+import type { Locale, Message } from '@/domains/conversation/entities';
+import type { StreamProgress } from '../hooks/useSSEStream';
+import { normalizeLocale, t } from '@/shared/i18n/conversation';
+
+interface MessageListProps {
+  locale: Locale;
+  messages: Message[];
+  streamingContent?: string;
+  isStreaming?: boolean;
+  progressSteps?: StreamProgress[];
+}
+
+export function MessageList({
+  locale,
+  messages,
+  streamingContent,
+  isStreaming,
+  progressSteps = [],
+}: MessageListProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const copy = t(locale);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const distanceFromBottom =
+      container.scrollHeight - container.scrollTop - container.clientHeight;
+    const shouldStickToBottom = distanceFromBottom < 120;
+
+    if (shouldStickToBottom) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+  }, [messages.length, streamingContent, progressSteps.length]);
+
+  if (messages.length === 0 && !isStreaming) {
+    return (
+      <div className="flex min-h-0 flex-1 items-center justify-center bg-slate-50/45 px-6 text-sm text-gray-400">
+        {copy.emptyState}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      ref={containerRef}
+      className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto bg-slate-50/45 px-5 py-5"
+    >
+      {messages.map((msg) => (
+        <div
+          key={msg.id}
+          className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+        >
+          <div
+            className={`max-w-[78%] rounded-[1.35rem] px-4 py-3 text-sm ${
+              msg.role === 'user'
+                ? 'bg-slate-900 text-white shadow-[0_14px_30px_rgba(15,23,42,0.16)]'
+                : 'border border-white/80 bg-white shadow-[0_12px_30px_rgba(15,23,42,0.08)]'
+            }`}
+          >
+            {msg.role === 'user' ? (
+              <div className="space-y-1">
+                <p className="whitespace-pre-wrap">{msg.content}</p>
+                <UserDeliveryStatus
+                  locale={locale}
+                  status={msg.metadata?.delivery_status}
+                />
+              </div>
+            ) : (
+              <>
+                <ProgressTrace
+                  steps={msg.progressSteps ?? []}
+                  locale={normalizeLocale(msg.metadata?.locale ?? locale)}
+                />
+                <StreamingMessage
+                  content={msg.content}
+                  locale={normalizeLocale(msg.metadata?.disclaimer_locale ?? msg.metadata?.locale ?? locale)}
+                  hasDisclaimer={msg.hasDisclaimer}
+                />
+              </>
+            )}
+          </div>
+        </div>
+      ))}
+
+      {isStreaming && streamingContent !== undefined && (
+        <div className="flex justify-start">
+          <div className="max-w-[78%] rounded-[1.35rem] border border-white/80 bg-white px-4 py-3 shadow-[0_12px_30px_rgba(15,23,42,0.08)]">
+            <ProgressTrace steps={progressSteps} locale={locale} />
+            <StreamingMessage content={streamingContent} locale={locale} isStreaming />
+          </div>
+        </div>
+      )}
+      <div ref={bottomRef} />
+    </div>
+  );
+}
+
+function UserDeliveryStatus({
+  locale,
+  status,
+}: {
+  locale: Locale;
+  status?: 'queued' | 'sending' | 'failed';
+}) {
+  if (!status) return null;
+
+  const copy = {
+    'zh-CN': {
+      queued: '排队中',
+      sending: '发送中',
+      failed: '发送失败',
+    },
+    'en-US': {
+      queued: 'Queued',
+      sending: 'Sending',
+      failed: 'Failed',
+    },
+  }[locale];
+
+  return (
+    <div className="text-right text-[11px] text-white/70">
+      {copy[status]}
+    </div>
+  );
+}
+
+function ProgressTrace({ steps, locale }: { steps: StreamProgress[]; locale: Locale }) {
+  if (steps.length === 0) return null;
+
+  return (
+    <details open className="mb-3 rounded-2xl border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-800">
+      <summary className="cursor-pointer font-medium">{t(locale).progressTrace}</summary>
+      <div className="mt-2 space-y-1">
+        {steps.map((step, index) => (
+          <div key={`${step.stage}-${index}`} className="space-y-2">
+            <div className="flex gap-2">
+              <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-500" />
+              <span>{step.message}</span>
+            </div>
+            {(step.artifacts ?? []).length > 0 && (
+              <div className="ml-4 space-y-2">
+                {step.artifacts?.map((artifact, artifactIndex) => (
+                  <div
+                    key={`${artifact.chunk_id ?? artifactIndex}`}
+                    className="rounded border border-blue-100 bg-white px-2 py-2 text-blue-950"
+                  >
+                    <div className="flex flex-wrap items-center gap-2 font-medium">
+                      <span>{artifact.title}</span>
+                      {artifact.score !== undefined && artifact.score !== null && (
+                        <span className="text-[11px] font-normal text-blue-600">
+                          score {artifact.score}
+                        </span>
+                      )}
+                    </div>
+                    {artifact.subtitle && (
+                      <div className="mt-0.5 text-[11px] text-blue-600">{artifact.subtitle}</div>
+                    )}
+                    <div className="mt-1 whitespace-pre-wrap text-[11px] leading-relaxed text-gray-700">
+                      {artifact.content}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </details>
+  );
+}

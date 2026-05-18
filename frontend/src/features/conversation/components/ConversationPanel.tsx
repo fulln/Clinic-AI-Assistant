@@ -78,7 +78,7 @@ export function ConversationPanel({ agentId: initialAgentId, conversationId }: C
         </div>
       )}
 
-      <MessageInput onSend={handleSend} locale={locale} disabled={streaming.isStreaming} />
+      <MessageInput onSend={handleSend} locale={locale} />
     </div>
   );
 }

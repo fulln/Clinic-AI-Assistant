@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import uuid
 
 
@@ -34,3 +35,8 @@ class FileStorage:
             os.remove(path)
         except FileNotFoundError:
             pass
+
+    def delete_kb_dir(self, kb_id: str) -> None:
+        """Remove all uploaded files for a knowledge base if the directory exists."""
+        dir_path = os.path.join(self.BASE_DIR, str(kb_id))
+        shutil.rmtree(dir_path, ignore_errors=True)

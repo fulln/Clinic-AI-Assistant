@@ -16,6 +16,14 @@ interface StreamingState {
   streamingMessageId: string | null;
 }
 
+interface PendingMessage {
+  tempId: string;
+  content: string;
+  agentId?: string;
+  ragEnabled?: boolean;
+  locale: Locale;
+}
+
 export function useConversation(initialConversationId?: string) {
   const siteLocale = useLocaleStore((state) => state.locale);
   const setSiteLocale = useLocaleStore((state) => state.setLocale);
@@ -37,6 +45,7 @@ export function useConversation(initialConversationId?: string) {
   const progressStepsRef = useRef<StreamProgress[]>([]);
   const localeRef = useRef<Locale>(siteLocale);
   const sendingRef = useRef(false);
+  const pendingQueueRef = useRef<PendingMessage[]>([]);
 
   const createConversation = useCallback(async (agentId?: string, nextLocale: Locale = localeRef.current) => {
     const { data } = await apiClient.post<any>('/api/v1/conversations', {
@@ -97,95 +106,149 @@ export function useConversation(initialConversationId?: string) {
     }
   }, [setSiteLocale]);
 
+  const updateUserMessageDelivery = useCallback(
+    (tempId: string, deliveryStatus?: 'queued' | 'sending' | 'failed') => {
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === tempId
+            ? {
+                ...msg,
+                metadata: {
+                  ...(msg.metadata ?? {}),
+                  delivery_status: deliveryStatus,
+                },
+              }
+            : msg
+        )
+      );
+    },
+    []
+  );
+
+  const processPendingQueue = useCallback(async () => {
+    if (sendingRef.current) return;
+
+    const nextMessage = pendingQueueRef.current.shift();
+    if (!nextMessage) return;
+
+    const { tempId, content, agentId, ragEnabled, locale: activeLocale } = nextMessage;
+    setError(null);
+    sendingRef.current = true;
+    updateUserMessageDelivery(tempId, 'sending');
+
+    try {
+      let convId = conversationIdRef.current;
+      if (!convId) {
+        const conv = await createConversation(agentId, activeLocale);
+        convId = conv.id;
+      }
+      if (!convId) return;
+
+      streamingContentRef.current = '';
+      progressStepsRef.current = [];
+      setProgressSteps([]);
+      setStreaming({ isStreaming: true, streamingContent: '', streamingMessageId: null });
+
+      await stream(convId, content, agentId ?? null, ragEnabled ?? null, activeLocale, {
+        onStart: (messageId, _agentId, startLocale) => {
+          localeRef.current = startLocale;
+          setLocale(startLocale);
+          setSiteLocale(startLocale);
+          setStreaming((s) => ({ ...s, streamingMessageId: messageId }));
+        },
+        onToken: (token) => {
+          streamingContentRef.current += token;
+          setStreaming((s) => ({ ...s, streamingContent: s.streamingContent + token }));
+        },
+        onDisclaimer: (_text, disclaimerLocale) => {
+          localeRef.current = disclaimerLocale;
+          setLocale(disclaimerLocale);
+          setSiteLocale(disclaimerLocale);
+        },
+        onProgress: (progress) => {
+          progressStepsRef.current = [...progressStepsRef.current, progress];
+          setProgressSteps(progressStepsRef.current);
+        },
+        onEnd: (messageId, _latencyMs, endLocale) => {
+          const assistantContent = streamingContentRef.current;
+          const assistantMsg: Message = {
+            id: messageId, role: 'assistant', content: assistantContent,
+            hasDisclaimer: true,
+            createdAt: new Date().toISOString(),
+            metadata: { locale: endLocale, disclaimer_locale: endLocale },
+            progressSteps: progressStepsRef.current,
+          };
+          setMessages((prev) => {
+            if (prev.some((msg) => msg.id === messageId)) return prev;
+            return [
+              ...prev.map((msg) =>
+                msg.id === tempId
+                  ? {
+                      ...msg,
+                      metadata: {
+                        ...(msg.metadata ?? {}),
+                        delivery_status: undefined,
+                      },
+                    }
+                  : msg
+              ),
+              assistantMsg,
+            ];
+          });
+          localeRef.current = endLocale;
+          setLocale(endLocale);
+          setSiteLocale(endLocale);
+          setConversation((current) => current ? {
+            ...current,
+            session: current.session ? { ...current.session, locale: endLocale } : undefined,
+          } : current);
+          streamingContentRef.current = '';
+          progressStepsRef.current = [];
+          setStreaming({ isStreaming: false, streamingContent: '', streamingMessageId: null });
+        },
+        onError: (_code, message, errorLocale) => {
+          localeRef.current = errorLocale;
+          setLocale(errorLocale);
+          setSiteLocale(errorLocale);
+          setError(message);
+          updateUserMessageDelivery(tempId, 'failed');
+          progressStepsRef.current = [];
+          setProgressSteps([]);
+          setStreaming({ isStreaming: false, streamingContent: '', streamingMessageId: null });
+        },
+      });
+    } finally {
+      sendingRef.current = false;
+      if (pendingQueueRef.current.length > 0) {
+        void processPendingQueue();
+      }
+    }
+  }, [createConversation, setSiteLocale, stream, updateUserMessageDelivery]);
+
   const sendMessage = useCallback(
     async (content: string, agentId?: string, ragEnabled?: boolean) => {
-      if (sendingRef.current) return;
-
       const activeLocale = localeRef.current;
       const validationError = ConversationDomainService.validateMessageContent(content, activeLocale);
       if (validationError) { setError(validationError); return; }
-      setError(null);
-      sendingRef.current = true;
-
-      try {
-        let convId = conversationIdRef.current;
-        if (!convId) {
-          const conv = await createConversation(agentId, activeLocale);
-          convId = conv.id;
-        }
-        if (!convId) return;
-
-        const userMsg: Message = {
-          id: `temp-${Date.now()}`, role: 'user', content,
-          hasDisclaimer: false,
-          createdAt: new Date().toISOString(),
-          metadata: { locale: activeLocale },
-        };
-        setMessages((prev) => [...prev, userMsg]);
-        streamingContentRef.current = '';
-        progressStepsRef.current = [];
-        setProgressSteps([]);
-        setStreaming({ isStreaming: true, streamingContent: '', streamingMessageId: null });
-
-        await stream(convId, content, agentId ?? null, ragEnabled ?? null, activeLocale, {
-          onStart: (messageId, _agentId, startLocale) => {
-            localeRef.current = startLocale;
-            setLocale(startLocale);
-            setSiteLocale(startLocale);
-            setStreaming((s) => ({ ...s, streamingMessageId: messageId }));
-          },
-          onToken: (token) => {
-            streamingContentRef.current += token;
-            setStreaming((s) => ({ ...s, streamingContent: s.streamingContent + token }));
-          },
-          onDisclaimer: (_text, disclaimerLocale) => {
-            localeRef.current = disclaimerLocale;
-            setLocale(disclaimerLocale);
-            setSiteLocale(disclaimerLocale);
-          },
-          onProgress: (progress) => {
-            progressStepsRef.current = [...progressStepsRef.current, progress];
-            setProgressSteps(progressStepsRef.current);
-          },
-          onEnd: (messageId, _latencyMs, endLocale) => {
-            const content = streamingContentRef.current;
-            const assistantMsg: Message = {
-              id: messageId, role: 'assistant', content,
-              hasDisclaimer: true,
-              createdAt: new Date().toISOString(),
-              metadata: { locale: endLocale, disclaimer_locale: endLocale },
-              progressSteps: progressStepsRef.current,
-            };
-            setMessages((prev) => {
-              if (prev.some((msg) => msg.id === messageId)) return prev;
-              return [...prev, assistantMsg];
-            });
-            localeRef.current = endLocale;
-            setLocale(endLocale);
-            setSiteLocale(endLocale);
-            setConversation((current) => current ? {
-              ...current,
-              session: current.session ? { ...current.session, locale: endLocale } : undefined,
-            } : current);
-            streamingContentRef.current = '';
-            progressStepsRef.current = [];
-            setStreaming({ isStreaming: false, streamingContent: '', streamingMessageId: null });
-          },
-          onError: (_code, message, errorLocale) => {
-            localeRef.current = errorLocale;
-            setLocale(errorLocale);
-            setSiteLocale(errorLocale);
-            setError(message);
-            progressStepsRef.current = [];
-            setProgressSteps([]);
-            setStreaming({ isStreaming: false, streamingContent: '', streamingMessageId: null });
-          },
-        });
-      } finally {
-        sendingRef.current = false;
-      }
+      const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const deliveryStatus = sendingRef.current || pendingQueueRef.current.length > 0 ? 'queued' : 'sending';
+      const userMsg: Message = {
+        id: tempId, role: 'user', content,
+        hasDisclaimer: false,
+        createdAt: new Date().toISOString(),
+        metadata: { locale: activeLocale, delivery_status: deliveryStatus },
+      };
+      setMessages((prev) => [...prev, userMsg]);
+      pendingQueueRef.current.push({
+        tempId,
+        content,
+        agentId,
+        ragEnabled,
+        locale: activeLocale,
+      });
+      void processPendingQueue();
     },
-    [stream, createConversation, setSiteLocale]
+    [processPendingQueue]
   );
 
   const switchAgent = useCallback(async (agentId: string) => {

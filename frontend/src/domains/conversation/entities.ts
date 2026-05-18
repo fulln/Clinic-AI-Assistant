@@ -6,6 +6,7 @@ export interface MessageMetadata {
   disclaimer_locale?: Locale;
   latency_ms?: number;
   orchestra?: boolean;
+  delivery_status?: 'queued' | 'sending' | 'failed';
 }
 
 export interface Message {

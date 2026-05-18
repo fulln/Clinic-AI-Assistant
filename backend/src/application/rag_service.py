@@ -73,6 +73,7 @@ class RAGApplicationService:
         if kb.owner_id != owner_id:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="无权操作此知识库")
         await self._repo.delete_kb(kb_id)
+        self._storage.delete_kb_dir(str(kb_id))
         await self._audit.log(
             action=AuditAction.KNOWLEDGE_BASE_DELETED,
             resource_type="KnowledgeBase",

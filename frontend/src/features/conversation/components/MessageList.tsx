@@ -64,7 +64,13 @@ export function MessageList({
             }`}
           >
             {msg.role === 'user' ? (
-              <p className="whitespace-pre-wrap">{msg.content}</p>
+              <div className="space-y-1">
+                <p className="whitespace-pre-wrap">{msg.content}</p>
+                <UserDeliveryStatus
+                  locale={locale}
+                  status={msg.metadata?.delivery_status}
+                />
+              </div>
             ) : (
               <>
                 <ProgressTrace
@@ -91,6 +97,35 @@ export function MessageList({
         </div>
       )}
       <div ref={bottomRef} />
+    </div>
+  );
+}
+
+function UserDeliveryStatus({
+  locale,
+  status,
+}: {
+  locale: Locale;
+  status?: 'queued' | 'sending' | 'failed';
+}) {
+  if (!status) return null;
+
+  const copy = {
+    'zh-CN': {
+      queued: '排队中',
+      sending: '发送中',
+      failed: '发送失败',
+    },
+    'en-US': {
+      queued: 'Queued',
+      sending: 'Sending',
+      failed: 'Failed',
+    },
+  }[locale];
+
+  return (
+    <div className="text-right text-[11px] text-white/70">
+      {copy[status]}
     </div>
   );
 }

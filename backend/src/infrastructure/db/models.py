@@ -313,7 +313,11 @@ class KnowledgeBaseModel(Base):
     )
 
     owner: Mapped["UserModel"] = relationship(back_populates="knowledge_bases")
-    documents: Mapped[list["DocumentModel"]] = relationship(back_populates="knowledge_base")
+    documents: Mapped[list["DocumentModel"]] = relationship(
+        back_populates="knowledge_base",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
 
 
 class DocumentModel(Base):
@@ -337,7 +341,11 @@ class DocumentModel(Base):
     processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=False), nullable=True)
 
     knowledge_base: Mapped["KnowledgeBaseModel"] = relationship(back_populates="documents")
-    chunks: Mapped[list["DocumentChunkModel"]] = relationship(back_populates="document")
+    chunks: Mapped[list["DocumentChunkModel"]] = relationship(
+        back_populates="document",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
 
 
 class DocumentChunkModel(Base):

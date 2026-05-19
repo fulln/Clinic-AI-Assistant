@@ -6,7 +6,7 @@ from src.domains.publishing.aggregates import PublishingBatchAggregate
 from src.domains.publishing.entities import PublishingBatch
 from src.domains.publishing.repository import IPublishingRepository
 
-_REQUIRED_FIELDS = {"name", "description", "agent_type", "workflow_config"}
+_REQUIRED_FIELDS = {"name", "description", "agent_type"}
 
 
 def _validate_agent_config(config: dict) -> str | None:
@@ -18,7 +18,8 @@ def _validate_agent_config(config: dict) -> str | None:
         AgentType(config["agent_type"])
     except ValueError:
         return f"Invalid agent_type: {config['agent_type']}"
-    if not isinstance(config["workflow_config"], dict):
+    wc = config.get("workflow_config", {})
+    if not isinstance(wc, dict):
         return "workflow_config must be a dict"
     return None
 
@@ -68,20 +69,28 @@ class BatchPublishingService:
                 slug=slug,
                 description=config["description"],
                 agent_type=AgentType(config["agent_type"]),
-                workflow_config=config["workflow_config"],
+                workflow_config=config.get("workflow_config", {}),
                 capabilities=config.get("capabilities", []),
                 allowed_roles=config.get("allowed_roles", []),
                 status=AgentStatus.PUBLISHED,
                 version=config.get("version", "1.0.0"),
                 created_by=batch.submitted_by,
+                system_prompt_en=config.get("system_prompt_en"),
+                system_prompt_zh=config.get("system_prompt_zh"),
+                tools=list(config.get("tools") or []),
+                max_tool_turns=int(config.get("max_tool_turns") or 3),
+                llm_model=config.get("llm_model"),
+                llm_temperature=config.get("llm_temperature"),
+                llm_max_tokens=config.get("llm_max_tokens"),
             )
 
             try:
                 existing_agent = await self._agent_repo.find_by_slug(slug)
                 if existing_agent:
-                    agent.id = existing_agent.id
-                    agent.created_at = existing_agent.created_at
-                    agent.created_by = existing_agent.created_by
+                    # Idempotent seed: keep whatever the operator has tuned in the
+                    # management UI. The JSON file is a bootstrap default only.
+                    aggregate.mark_item_success(index, existing_agent.id)
+                    continue
                 saved_agent = await self._agent_repo.save(agent)
                 aggregate.mark_item_success(index, saved_agent.id)
             except Exception as exc:

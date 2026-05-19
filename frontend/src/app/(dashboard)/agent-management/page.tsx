@@ -5,7 +5,8 @@ import { useAuthStore } from '@/shared/store/authStore';
 import { useLocaleStore } from '@/shared/store/localeStore';
 import { getSiteCopy } from '@/shared/i18n/site';
 import { useAgentManagement } from '@/features/agent-catalog/hooks/useAgentManagement';
-import type { AgentStatus, AgentType } from '@/domains/agent/entities';
+import { EditAgentModal } from '@/features/agent-catalog/components/EditAgentModal';
+import type { Agent, AgentEditPayload, AgentStatus, AgentType } from '@/domains/agent/entities';
 
 type FilterValue = 'all' | AgentType;
 
@@ -27,6 +28,7 @@ export default function AgentManagementPage() {
   const copy = getSiteCopy(locale);
   const [filter, setFilter] = useState<FilterValue>('all');
   const [actionError, setActionError] = useState<string | null>(null);
+  const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
   const {
     agents,
     isLoading,
@@ -34,9 +36,11 @@ export default function AgentManagementPage() {
     publishAgent,
     archiveAgent,
     restoreAgent,
+    updateAgent,
     isPublishing,
     isArchiving,
     isRestoring,
+    isUpdating,
   } =
     useAgentManagement();
 
@@ -80,6 +84,13 @@ export default function AgentManagementPage() {
     } catch (error: any) {
       setActionError(error?.response?.data?.detail ?? copy.agentsActionFailed);
     }
+  };
+
+  const handleSaveEdit = async (payload: AgentEditPayload) => {
+    if (!editingAgent) return;
+    setActionError(null);
+    await updateAgent({ agent: editingAgent, edits: payload });
+    setEditingAgent(null);
   };
 
   const tabs: Array<{ value: FilterValue; label: string }> = [
@@ -159,6 +170,14 @@ export default function AgentManagementPage() {
                   </td>
                   <td className="px-4 py-4">
                     <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setEditingAgent(agent)}
+                        disabled={isPublishing || isArchiving || isRestoring || isUpdating}
+                        className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:opacity-50"
+                      >
+                        {copy.agentsEdit}
+                      </button>
                       {agent.status === 'draft' && (
                         <button
                           type="button"
@@ -204,6 +223,14 @@ export default function AgentManagementPage() {
           </table>
         </div>
       )}
+
+      <EditAgentModal
+        agent={editingAgent}
+        open={editingAgent !== null}
+        onClose={() => setEditingAgent(null)}
+        onSave={handleSaveEdit}
+        saving={isUpdating}
+      />
     </div>
   );
 }

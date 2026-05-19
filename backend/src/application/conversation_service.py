@@ -1,6 +1,5 @@
 """ConversationApplicationService: orchestrates message flow with SSE streaming."""
 import json
-import os
 import time
 import uuid
 from dataclasses import dataclass
@@ -26,18 +25,16 @@ from src.domains.conversation.repository import IConversationRepository
 from src.domains.conversation.services import ConversationDomainService
 from src.domains.rag.repository import IKnowledgeBaseRepository
 from src.infrastructure.llm.langchain_adapter import LLMAdapter
+from src.infrastructure.llm.tools.base import ToolContext, ToolEvent
 
 
 @dataclass
 class OrchestraStep:
     agent: Agent
-    workflow_type: str
     reason: str
 
 
 class ConversationApplicationService:
-    RAG_SCORE_THRESHOLD = 0.5
-
     def __init__(
         self,
         conv_repo: IConversationRepository,
@@ -116,12 +113,16 @@ class ConversationApplicationService:
                     detail=get_forbidden_agent_message(effective_locale),
                 )
 
-        if rag_enabled is not None and user_role == "doctor":
+        if rag_enabled is not None:
             session.rag_enabled = rag_enabled
 
         # Save user message
         user_msg = self._domain.build_user_message(conv.id, session.id, content, effective_locale)
         await self._conv_repo.save_message(user_msg)
+        # Streaming responses outlive FastAPI's dependency cleanup, so we
+        # commit here ourselves — otherwise the user message would be lost
+        # if the client disconnects mid-stream.
+        await self._conv_repo.commit()
 
         # Build message history for LLM
         history = await self._conv_repo.get_messages(conv.id, 20, None)
@@ -167,41 +168,6 @@ class ConversationApplicationService:
 
             child_outputs: list[dict] = []
             for index, step in enumerate(steps, start=1):
-                rag_chunks: list[dict] = []
-                step_rag_enabled = session.rag_enabled or step.workflow_type == "rag_qa"
-                if step.workflow_type == "rag_qa":
-                    yield progress(
-                        effective_locale,
-                        "rag_retrieval",
-                        get_progress_message(
-                            "rag_retrieval",
-                            effective_locale,
-                            agent_name=step.agent.name,
-                        ),
-                        agent_id=str(step.agent.id),
-                        agent_name=step.agent.name,
-                        workflow_type=step.workflow_type,
-                    )
-                    rag_chunks = await self._retrieve_rag_chunks(
-                        owner_id=user_id,
-                        query=content,
-                        user_role=user_role,
-                        top_k=5,
-                    )
-                    yield progress(
-                        effective_locale,
-                        "rag_retrieval_done",
-                        get_progress_message(
-                            "rag_retrieval_done",
-                            effective_locale,
-                            count=len(rag_chunks),
-                        ),
-                        agent_id=str(step.agent.id),
-                        agent_name=step.agent.name,
-                        workflow_type=step.workflow_type,
-                        artifacts=self._rag_artifacts(rag_chunks),
-                    )
-
                 yield progress(
                     effective_locale,
                     "child_start",
@@ -211,31 +177,61 @@ class ConversationApplicationService:
                         index=index,
                         total=len(steps),
                         agent_name=step.agent.name,
-                        workflow_type=step.workflow_type,
+                        workflow_type=step.agent.slug,
                     ),
                     agent_id=str(step.agent.id),
                     agent_name=step.agent.name,
-                    workflow_type=step.workflow_type,
+                    workflow_type=step.agent.slug,
                 )
-                child_tokens: list[str] = []
-                stream = await self._dispatcher.dispatch(
-                    workflow_type=step.workflow_type,
-                    messages=messages_for_llm,
-                    session_context=session.context_snapshot,
-                    agent_id=str(step.agent.id),
+
+                tool_ctx = ToolContext(
+                    user_id=user_id,
                     user_role=user_role,
                     locale=effective_locale,
-                    rag_enabled=step_rag_enabled,
-                    rag_chunks=rag_chunks,
+                    rag_repo=self._rag_repo,
                 )
-                async for token in stream:
-                    child_tokens.append(token)
+                stream = await self._dispatcher.dispatch(
+                    agent=step.agent,
+                    messages=messages_for_llm,
+                    session_context=session.context_snapshot,
+                    user_role=user_role,
+                    locale=effective_locale,
+                    tool_context=tool_ctx,
+                )
+                # Single-step routing: stream child tokens straight to the client.
+                # This keeps the agent's configured prompt/voice intact (the
+                # supervisor summary step would otherwise rewrite the reply).
+                single_step = len(steps) == 1
+                child_tokens: list[str] = []
+                async for item in stream:
+                    if isinstance(item, ToolEvent):
+                        if single_step:
+                            yield progress(
+                                effective_locale,
+                                "tool_call",
+                                get_progress_message(
+                                    "tool_call",
+                                    effective_locale,
+                                    agent_name=step.agent.name,
+                                    tool_name=item.name,
+                                ),
+                                agent_id=str(step.agent.id),
+                                agent_name=step.agent.name,
+                                workflow_type=step.agent.slug,
+                                artifacts=item.artifacts,
+                            )
+                        continue
+                    # Plain token from LLM
+                    child_tokens.append(item)
+                    if single_step:
+                        full_response.append(item)
+                        yield f"event: token\ndata: {json.dumps({'token': item})}\n\n"
                 child_text = "".join(child_tokens)
                 child_outputs.append(
                     {
                         "agent_id": str(step.agent.id),
                         "agent_name": step.agent.name,
-                        "workflow_type": step.workflow_type,
+                        "agent_slug": step.agent.slug,
                         "reason": step.reason,
                         "output": child_text,
                     }
@@ -250,22 +246,24 @@ class ConversationApplicationService:
                     ),
                     agent_id=str(step.agent.id),
                     agent_name=step.agent.name,
-                    workflow_type=step.workflow_type,
+                    workflow_type=step.agent.slug,
                 )
 
-            yield progress(
-                effective_locale,
-                "supervisor",
-                get_progress_message("supervisor_summary", effective_locale),
-            )
-            async for token in self._stream_supervisor_answer(
-                content,
-                messages_for_llm,
-                child_outputs,
-                effective_locale,
-            ):
-                full_response.append(token)
-                yield f"event: token\ndata: {json.dumps({'token': token})}\n\n"
+            # Only synthesize through the supervisor when multiple child agents ran.
+            if len(steps) > 1:
+                yield progress(
+                    effective_locale,
+                    "supervisor",
+                    get_progress_message("supervisor_summary", effective_locale),
+                )
+                async for token in self._stream_supervisor_answer(
+                    content,
+                    messages_for_llm,
+                    child_outputs,
+                    effective_locale,
+                ):
+                    full_response.append(token)
+                    yield f"event: token\ndata: {json.dumps({'token': token})}\n\n"
             response_text = "".join(full_response)
             disclaimer_text = get_disclaimer(effective_locale)
             if disclaimer_text not in response_text:
@@ -275,6 +273,8 @@ class ConversationApplicationService:
         except HTTPException:
             raise
         except Exception:
+            import traceback
+            traceback.print_exc()
             refused = True
             yield (
                 "event: error\ndata: "
@@ -311,6 +311,9 @@ class ConversationApplicationService:
 
         session.touch()
         await self._conv_repo.save_session(session)
+        # Commit assistant message + session-touch together at the end of
+        # the stream; see the comment after save_user_message above.
+        await self._conv_repo.commit()
 
         await self._audit.log(
             action=AuditAction.MESSAGE_SENT if not refused else AuditAction.MESSAGE_REFUSED,
@@ -353,11 +356,9 @@ class ConversationApplicationService:
         locale: Locale,
     ) -> list[OrchestraStep]:
         if forced_agent:
-            workflow_type = self._agent_workflow_type(forced_agent)
             return [
                 OrchestraStep(
                     forced_agent,
-                    workflow_type,
                     get_progress_message("user_selected", locale),
                 )
             ]
@@ -374,18 +375,16 @@ class ConversationApplicationService:
 
         route = await self._route_with_supervisor(content, messages, candidates, rag_enabled, locale)
         selected: list[OrchestraStep] = []
-        by_workflow = {self._agent_workflow_type(agent): agent for agent in candidates}
+        by_id = {str(agent.id): agent for agent in candidates}
         by_slug = {agent.slug: agent for agent in candidates}
 
         for item in route:
-            raw = str(item.get("workflow_type") or item.get("slug") or "")
-            workflow_type = self._dispatcher.normalize_workflow_type(raw)
-            agent = by_workflow.get(workflow_type) or by_slug.get(raw)
+            raw = str(item.get("agent_id") or item.get("slug") or item.get("workflow_type") or "")
+            agent = by_id.get(raw) or by_slug.get(raw)
             if agent and all(step.agent.id != agent.id for step in selected):
                 selected.append(
                     OrchestraStep(
                         agent=agent,
-                        workflow_type=self._agent_workflow_type(agent),
                         reason=str(item.get("reason") or get_progress_message("supervisor_route", locale)),
                     )
                 )
@@ -393,49 +392,21 @@ class ConversationApplicationService:
                 break
 
         if selected:
-            self._augment_multi_intent_steps(content, selected, by_workflow, rag_enabled, locale)
             return selected
 
-        fallback_workflow = self._fallback_workflow(content, rag_enabled)
-        fallback_agent = by_workflow.get(fallback_workflow) or candidates[0]
+        # Fallback: when supervisor produced nothing, pick the first RAG-enabled
+        # agent if user message mentions knowledge-base, else the first candidate.
+        text = content.lower()
+        fallback_agent: Agent | None = None
+        if rag_enabled or "知识库" in text or "rag" in text:
+            fallback_agent = next((a for a in candidates if "knowledge_base_search" in a.tools), None)
+        fallback_agent = fallback_agent or candidates[0]
         return [
             OrchestraStep(
                 fallback_agent,
-                self._agent_workflow_type(fallback_agent),
                 get_progress_message("fallback_route", locale),
             )
         ]
-
-    def _augment_multi_intent_steps(
-        self,
-        content: str,
-        selected: list[OrchestraStep],
-        by_workflow: dict[str, Agent],
-        rag_enabled: bool = False,
-        locale: Locale = Locale.ZH_CN,
-    ) -> None:
-        if len(selected) >= 2:
-            return
-        requested_workflows: list[tuple[str, str]] = []
-        text = content.lower()
-        if rag_enabled or "知识库" in text or "rag" in text:
-            requested_workflows.append(("rag_qa", get_progress_message("rag_request", locale)))
-        if any(keyword in text for keyword in ["摘要", "整理", "病历", "转诊", "文书", "记录"]):
-            requested_workflows.append(("document_organizer", get_progress_message("document_request", locale)))
-        if any(keyword in text for keyword in ["科普", "预防", "护理", "宣教", "健康教育"]):
-            requested_workflows.append(("health_educator", get_progress_message("education_request", locale)))
-        if any(keyword in text for keyword in ["预约", "排班", "运营", "收费", "接待"]):
-            requested_workflows.append(("operations_consultant", get_progress_message("operations_request", locale)))
-
-        existing = {step.workflow_type for step in selected}
-        for workflow_type, reason in requested_workflows:
-            if workflow_type in existing:
-                continue
-            agent = by_workflow.get(workflow_type)
-            if not agent:
-                continue
-            selected.append(OrchestraStep(agent, workflow_type, reason))
-            break
 
     async def _route_with_supervisor(
         self,
@@ -447,10 +418,11 @@ class ConversationApplicationService:
     ) -> list[dict]:
         catalog = [
             {
-                "name": agent.name,
+                "agent_id": str(agent.id),
                 "slug": agent.slug,
-                "workflow_type": self._agent_workflow_type(agent),
+                "name": agent.name,
                 "description": agent.description,
+                "tools": agent.tools,
             }
             for agent in candidates
         ]
@@ -476,29 +448,8 @@ class ConversationApplicationService:
             if isinstance(parsed, list):
                 return [item for item in parsed if isinstance(item, dict)]
         except Exception:
-            return [
-                {
-                    "workflow_type": self._fallback_workflow(content, rag_enabled),
-                    "reason": get_progress_message("supervisor_route", locale),
-                }
-            ]
+            return []
         return []
-
-    def _fallback_workflow(self, content: str, rag_enabled: bool) -> str:
-        text = content.lower()
-        if rag_enabled or "知识库" in text or "rag" in text:
-            return "rag_qa"
-        if any(keyword in text for keyword in ["摘要", "整理", "病历", "转诊", "文书", "记录"]):
-            return "document_organizer"
-        if any(keyword in text for keyword in ["预约", "排班", "运营", "收费", "流程", "接待"]):
-            return "operations_consultant"
-        if any(keyword in text for keyword in ["科普", "预防", "护理", "饮食", "运动", "健康教育"]):
-            return "health_educator"
-        return "medical_auxiliary"
-
-    def _agent_workflow_type(self, agent: Agent) -> str:
-        workflow_type = agent.workflow_config.get("workflow_type", "medical_auxiliary")
-        return self._dispatcher.normalize_workflow_type(workflow_type)
 
     async def _stream_supervisor_answer(
         self,
@@ -522,75 +473,6 @@ class ConversationApplicationService:
             ]
         ):
             yield token
-
-    async def _retrieve_rag_chunks(
-        self,
-        owner_id: uuid.UUID,
-        query: str,
-        user_role: str,
-        top_k: int,
-    ) -> list[dict]:
-        if self._rag_repo is None or user_role != "doctor":
-            return []
-
-        kbs = await self._rag_repo.find_by_owner(owner_id)
-        if not kbs:
-            return []
-
-        query_embedding = self._embed_query(query)
-        all_results: list[dict] = []
-        per_kb_limit = max(top_k, 3)
-        for kb in kbs:
-            results = await self._rag_repo.similarity_search(
-                query_embedding=query_embedding,
-                kb_id=kb.id,
-                top_k=per_kb_limit,
-            )
-            for result in results:
-                if float(result.get("similarity_score", 0)) <= self.RAG_SCORE_THRESHOLD:
-                    continue
-                result["knowledge_base_id"] = str(kb.id)
-                result["knowledge_base_name"] = kb.name
-                all_results.append(result)
-
-        all_results.sort(key=lambda item: item["similarity_score"], reverse=True)
-        return all_results[:top_k]
-
-    @staticmethod
-    def _rag_artifacts(rag_chunks: list[dict]) -> list[dict]:
-        artifacts = []
-        for index, chunk in enumerate(rag_chunks, start=1):
-            content = str(chunk.get("content") or "")
-            artifacts.append(
-                {
-                    "type": "rag_chunk",
-                    "title": f"{index}. {chunk.get('filename', '知识库文档')}",
-                    "subtitle": chunk.get("knowledge_base_name"),
-                    "score": round(float(chunk.get("similarity_score", 0)), 4),
-                    "content": content[:500],
-                    "document_id": chunk.get("document_id"),
-                    "chunk_id": chunk.get("chunk_id"),
-                }
-            )
-        return artifacts
-
-    @staticmethod
-    def _embed_query(query: str) -> list[float]:
-        import openai
-
-        embedding_api_key = os.environ.get("EMBEDDING_API_KEY") or os.environ["OPENAI_API_KEY"]
-        embedding_base_url = os.environ.get("EMBEDDING_BASE_URL") or os.environ.get("OPENAI_BASE_URL")
-        embedding_model = os.environ.get("EMBEDDING_MODEL", "text-embedding-3-small")
-        embedding_dimensions = os.environ.get("EMBEDDING_DIMENSIONS")
-        openai_client = openai.OpenAI(api_key=embedding_api_key, base_url=embedding_base_url)
-        embedding_request = {
-            "model": embedding_model,
-            "input": query,
-        }
-        if embedding_dimensions:
-            embedding_request["dimensions"] = int(embedding_dimensions)
-        response = openai_client.embeddings.create(**embedding_request)
-        return response.data[0].embedding
 
     async def update_session(
         self,
@@ -616,7 +498,7 @@ class ConversationApplicationService:
             )
         if active_agent_id is not None:
             session.switch_agent(active_agent_id)
-        if rag_enabled is not None and user_role == "doctor":
+        if rag_enabled is not None:
             session.rag_enabled = rag_enabled
         if locale is not None:
             session.set_locale(requested_locale)
@@ -641,19 +523,23 @@ class ConversationApplicationService:
             return (
                 "You are the supervisor agent for a clinic multi-agent system. "
                 "Select the best 1 child agent for the user's latest request, or 2 only when the request clearly needs two distinct capabilities. "
-                "Output JSON only, with each item containing workflow_type and reason. "
+                "Pick agents based on each candidate's description. "
+                "Output JSON only, an array where each item contains agent_id and reason. "
                 "Write the reasons in English.\n\n"
-                f"RAG enabled: {rag_enabled}\n"
-                f"Available child agents: {json.dumps(catalog, ensure_ascii=False)}\n"
+                f"RAG enabled on session: {rag_enabled}\n"
+                f"Available child agents (each has agent_id, slug, name, description, rag_enabled): "
+                f"{json.dumps(catalog, ensure_ascii=False)}\n"
                 f"Shared conversation context: {json.dumps(recent, ensure_ascii=False)}\n"
                 f"Latest user request: {content}"
             )
         return (
             "你是诊所多智能体系统的主控 agent。根据用户最新问题和共享对话上下文，"
-            "选择最合适的 1 个子 agent；只有当问题明显需要两个不同能力时才选择 2 个。"
-            "只输出 JSON 数组，不要输出 Markdown。每项包含 workflow_type 和 reason。\n\n"
-            f"RAG 是否启用：{rag_enabled}\n"
-            f"可用子 agent：{json.dumps(catalog, ensure_ascii=False)}\n"
+            "从候选 agent 中选择最合适的 1 个；只有当问题明显需要两个不同能力时才选择 2 个。"
+            "请基于每个 agent 的 description 来判断。"
+            "只输出 JSON 数组，不要输出 Markdown。每项包含 agent_id 和 reason。\n\n"
+            f"会话 RAG 是否启用：{rag_enabled}\n"
+            f"可用子 agent（每项含 agent_id、slug、name、description、rag_enabled）："
+            f"{json.dumps(catalog, ensure_ascii=False)}\n"
             f"共享对话上下文：{json.dumps(recent, ensure_ascii=False)}\n"
             f"用户最新问题：{content}"
         )

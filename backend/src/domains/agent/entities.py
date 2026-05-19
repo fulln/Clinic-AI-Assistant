@@ -27,6 +27,13 @@ class Agent:
     allowed_roles: list[str] = field(default_factory=list)
     status: AgentStatus = AgentStatus.DRAFT
     version: str | None = None
+    system_prompt_en: str | None = None
+    system_prompt_zh: str | None = None
+    tools: list[str] = field(default_factory=list)
+    max_tool_turns: int = 3
+    llm_model: str | None = None
+    llm_temperature: float | None = None
+    llm_max_tokens: int | None = None
     created_by: uuid.UUID | None = None
     created_at: datetime = field(default_factory=datetime.utcnow)
     updated_at: datetime = field(default_factory=datetime.utcnow)

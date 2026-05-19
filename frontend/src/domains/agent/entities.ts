@@ -11,4 +11,25 @@ export interface Agent {
   allowedRoles: string[];
   status: AgentStatus;
   version?: string;
+  systemPromptEn?: string | null;
+  systemPromptZh?: string | null;
+  tools: string[];
+  maxToolTurns: number;
+  llmModel?: string | null;
+  llmTemperature?: number | null;
+  llmMaxTokens?: number | null;
+}
+
+export interface AgentEditPayload {
+  name: string;
+  description: string;
+  agentType: AgentType;
+  allowedRoles: string[];
+  systemPromptEn: string | null;
+  systemPromptZh: string | null;
+  tools: string[];
+  maxToolTurns: number;
+  llmModel: string | null;
+  llmTemperature: number | null;
+  llmMaxTokens: number | null;
 }

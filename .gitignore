@@ -28,6 +28,10 @@ npm-debug.log*
 postgres_data/
 redis_data/
 
+# User-uploaded files (never commit)
+backend/uploads/
+.logs/
+
 # IDE
 .vscode/
 .idea/

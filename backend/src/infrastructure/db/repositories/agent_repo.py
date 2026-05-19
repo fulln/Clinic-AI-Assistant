@@ -70,6 +70,13 @@ class AgentRepository(IAgentRepository):
                 allowed_roles=agent.allowed_roles, status=agent.status.value,
                 version=agent.version, created_by=agent.created_by,
                 created_at=agent.created_at, updated_at=agent.updated_at,
+                system_prompt_en=agent.system_prompt_en,
+                system_prompt_zh=agent.system_prompt_zh,
+                tools=agent.tools,
+                max_tool_turns=agent.max_tool_turns,
+                llm_model=agent.llm_model,
+                llm_temperature=agent.llm_temperature,
+                llm_max_tokens=agent.llm_max_tokens,
             )
             self._session.add(row)
         else:
@@ -80,6 +87,13 @@ class AgentRepository(IAgentRepository):
             row.allowed_roles = agent.allowed_roles
             row.status = agent.status.value
             row.version = agent.version
+            row.system_prompt_en = agent.system_prompt_en
+            row.system_prompt_zh = agent.system_prompt_zh
+            row.tools = agent.tools
+            row.max_tool_turns = agent.max_tool_turns
+            row.llm_model = agent.llm_model
+            row.llm_temperature = agent.llm_temperature
+            row.llm_max_tokens = agent.llm_max_tokens
             row.updated_at = datetime.utcnow()
         await self._session.flush()
         # Invalidate catalog cache when status changes
@@ -94,6 +108,13 @@ class AgentRepository(IAgentRepository):
             capabilities=row.capabilities or [], allowed_roles=row.allowed_roles or [],
             status=AgentStatus(row.status), version=row.version, created_by=row.created_by,
             created_at=row.created_at, updated_at=row.updated_at,
+            system_prompt_en=row.system_prompt_en,
+            system_prompt_zh=row.system_prompt_zh,
+            tools=list(row.tools or []),
+            max_tool_turns=int(row.max_tool_turns or 3),
+            llm_model=row.llm_model,
+            llm_temperature=row.llm_temperature,
+            llm_max_tokens=row.llm_max_tokens,
         )
 
     @staticmethod
@@ -103,6 +124,13 @@ class AgentRepository(IAgentRepository):
             "description": agent.description, "agent_type": agent.agent_type.value,
             "capabilities": agent.capabilities, "allowed_roles": agent.allowed_roles,
             "status": agent.status.value, "version": agent.version,
+            "system_prompt_en": agent.system_prompt_en,
+            "system_prompt_zh": agent.system_prompt_zh,
+            "tools": agent.tools,
+            "max_tool_turns": agent.max_tool_turns,
+            "llm_model": agent.llm_model,
+            "llm_temperature": agent.llm_temperature,
+            "llm_max_tokens": agent.llm_max_tokens,
         }
 
     @staticmethod
@@ -113,4 +141,11 @@ class AgentRepository(IAgentRepository):
             workflow_config={}, capabilities=d.get("capabilities", []),
             allowed_roles=d.get("allowed_roles", []),
             status=AgentStatus(d["status"]), version=d.get("version"),
+            system_prompt_en=d.get("system_prompt_en"),
+            system_prompt_zh=d.get("system_prompt_zh"),
+            tools=list(d.get("tools") or []),
+            max_tool_turns=int(d.get("max_tool_turns") or 3),
+            llm_model=d.get("llm_model"),
+            llm_temperature=d.get("llm_temperature"),
+            llm_max_tokens=d.get("llm_max_tokens"),
         )

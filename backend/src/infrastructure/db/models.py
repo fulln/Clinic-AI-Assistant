@@ -7,6 +7,7 @@ from sqlalchemy import (
     Boolean,
     DateTime,
     Enum,
+    Float,
     ForeignKey,
     Index,
     Integer,
@@ -147,6 +148,13 @@ class AgentModel(Base):
         Enum(AgentStatus, values_callable=lambda x: [e.value for e in x]), default=AgentStatus.DRAFT, nullable=False
     )
     version: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    system_prompt_en: Mapped[str | None] = mapped_column(Text, nullable=True)
+    system_prompt_zh: Mapped[str | None] = mapped_column(Text, nullable=True)
+    tools: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    max_tool_turns: Mapped[int] = mapped_column(Integer, nullable=False, default=3)
+    llm_model: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    llm_temperature: Mapped[float | None] = mapped_column(Float, nullable=True)
+    llm_max_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_by: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
     )

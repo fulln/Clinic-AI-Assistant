@@ -83,6 +83,23 @@ type SiteDictionary = {
   agentsAllowedRoles: string;
   agentsManagementForbidden: string;
   agentsActionFailed: string;
+  agentsEdit: string;
+  agentsEditTitle: string;
+  agentsFieldName: string;
+  agentsFieldDescription: string;
+  agentsFieldSystemPromptEn: string;
+  agentsFieldSystemPromptZh: string;
+  agentsFieldTools: string;
+  agentsFieldMaxToolTurns: string;
+  agentsToolKnowledgeBase: string;
+  agentsFieldLlmModel: string;
+  agentsFieldLlmTemperature: string;
+  agentsFieldLlmMaxTokens: string;
+  agentsLlmModelPlaceholder: string;
+  agentsLlmMaxTokensPlaceholder: string;
+  agentsSave: string;
+  agentsSaving: string;
+  agentsSaveFailed: string;
   dashboardOverview: string;
   dashboardWorkspaceStatus: string;
   dashboardWorkspaceHealthy: string;
@@ -218,6 +235,23 @@ const dictionaries: Record<Locale, SiteDictionary> = {
     agentsAllowedRoles: '允许角色',
     agentsManagementForbidden: '仅管理员可访问 Agent 管理。',
     agentsActionFailed: 'Agent 操作失败，请重试。',
+    agentsEdit: '编辑',
+    agentsEditTitle: '编辑 Agent',
+    agentsFieldName: '名称',
+    agentsFieldDescription: '描述',
+    agentsFieldSystemPromptEn: 'System Prompt（英文）',
+    agentsFieldSystemPromptZh: 'System Prompt（中文）',
+    agentsFieldTools: '启用的工具',
+    agentsFieldMaxToolTurns: '最多工具调用轮数',
+    agentsToolKnowledgeBase: '知识库检索',
+    agentsFieldLlmModel: '模型（可选，留空使用默认）',
+    agentsFieldLlmTemperature: 'Temperature（0–2，可选）',
+    agentsFieldLlmMaxTokens: 'Max tokens（可选）',
+    agentsLlmModelPlaceholder: '例如：deepseek-chat',
+    agentsLlmMaxTokensPlaceholder: '例如：2048',
+    agentsSave: '保存',
+    agentsSaving: '保存中…',
+    agentsSaveFailed: '保存失败，请重试。',
     dashboardOverview: '工作台',
     dashboardWorkspaceStatus: 'Workspace',
     dashboardWorkspaceHealthy: 'Operational',
@@ -351,6 +385,23 @@ const dictionaries: Record<Locale, SiteDictionary> = {
     agentsAllowedRoles: 'Allowed roles',
     agentsManagementForbidden: 'Only admins can access agent management.',
     agentsActionFailed: 'Agent action failed. Please try again.',
+    agentsEdit: 'Edit',
+    agentsEditTitle: 'Edit agent',
+    agentsFieldName: 'Name',
+    agentsFieldDescription: 'Description',
+    agentsFieldSystemPromptEn: 'System prompt (English)',
+    agentsFieldSystemPromptZh: 'System prompt (Chinese)',
+    agentsFieldTools: 'Enabled tools',
+    agentsFieldMaxToolTurns: 'Max tool turns',
+    agentsToolKnowledgeBase: 'Knowledge base search',
+    agentsFieldLlmModel: 'Model (optional, blank = default)',
+    agentsFieldLlmTemperature: 'Temperature (0–2, optional)',
+    agentsFieldLlmMaxTokens: 'Max tokens (optional)',
+    agentsLlmModelPlaceholder: 'e.g. deepseek-chat',
+    agentsLlmMaxTokensPlaceholder: 'e.g. 2048',
+    agentsSave: 'Save',
+    agentsSaving: 'Saving…',
+    agentsSaveFailed: 'Failed to save. Please try again.',
     dashboardOverview: 'Workspace',
     dashboardWorkspaceStatus: 'Workspace',
     dashboardWorkspaceHealthy: 'Operational',

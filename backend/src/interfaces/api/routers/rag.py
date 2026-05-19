@@ -1,4 +1,6 @@
-"""T093 — FastAPI router for RAG endpoints (doctor role only)."""
+"""T093 — FastAPI router for RAG endpoints. Access is controlled by the
+agent's `allowed_roles` configuration, not by hard-coded role checks here.
+Data isolation is enforced via `owner_id` on each knowledge base."""
 from __future__ import annotations
 
 import uuid
@@ -11,7 +13,7 @@ from src.domains.audit.services import AuditService
 from src.infrastructure.db.repositories.audit_repo import AuditRepository
 from src.infrastructure.db.repositories.rag_repo import KnowledgeBaseRepository
 from src.infrastructure.db.models import UserModel, UserRole
-from src.interfaces.api.dependencies import get_db, require_role
+from src.interfaces.api.dependencies import get_current_user, get_db
 from src.interfaces.api.schemas.rag_schemas import (
     CreateKnowledgeBaseRequest,
     DocumentListItem,
@@ -23,8 +25,6 @@ from src.interfaces.api.schemas.rag_schemas import (
 )
 
 router = APIRouter()
-
-_doctor_guard = require_role(UserRole.DOCTOR)
 
 
 def _build_service(db: AsyncSession) -> RAGApplicationService:
@@ -42,7 +42,7 @@ def _build_service(db: AsyncSession) -> RAGApplicationService:
 @router.post("/knowledge-bases", response_model=KnowledgeBaseResponse, status_code=201)
 async def create_knowledge_base(
     body: CreateKnowledgeBaseRequest,
-    current_user: UserModel = Depends(_doctor_guard),
+    current_user: UserModel = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     svc = _build_service(db)
@@ -65,7 +65,7 @@ async def create_knowledge_base(
 
 @router.get("/knowledge-bases", response_model=list[KnowledgeBaseResponse])
 async def list_knowledge_bases(
-    current_user: UserModel = Depends(_doctor_guard),
+    current_user: UserModel = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     svc = _build_service(db)
@@ -87,7 +87,7 @@ async def list_knowledge_bases(
 @router.delete("/knowledge-bases/{kb_id}", status_code=204)
 async def delete_knowledge_base(
     kb_id: uuid.UUID,
-    current_user: UserModel = Depends(_doctor_guard),
+    current_user: UserModel = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     svc = _build_service(db)
@@ -106,7 +106,7 @@ async def delete_knowledge_base(
 async def upload_document(
     kb_id: uuid.UUID,
     file: UploadFile = File(...),
-    current_user: UserModel = Depends(_doctor_guard),
+    current_user: UserModel = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     file_bytes = await file.read()
@@ -135,7 +135,7 @@ async def upload_document(
 )
 async def list_documents(
     kb_id: uuid.UUID,
-    current_user: UserModel = Depends(_doctor_guard),
+    current_user: UserModel = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     svc = _build_service(db)
@@ -164,7 +164,7 @@ async def list_documents(
 async def delete_document(
     kb_id: uuid.UUID,
     doc_id: uuid.UUID,
-    current_user: UserModel = Depends(_doctor_guard),
+    current_user: UserModel = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     svc = _build_service(db)
@@ -178,7 +178,7 @@ async def delete_document(
 @router.post("/query", response_model=RAGQueryResponse)
 async def rag_query(
     body: RAGQueryRequest,
-    current_user: UserModel = Depends(_doctor_guard),
+    current_user: UserModel = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     svc = _build_service(db)

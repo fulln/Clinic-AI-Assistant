@@ -27,7 +27,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { href: '/conversation', label: copy.navConversation },
     { href: '/agents', label: copy.navAgents },
     ...(user?.role === 'admin' ? [{ href: '/agent-management', label: copy.navAgentManagement }] : []),
-    ...(user?.role === 'doctor' ? [{ href: '/rag', label: copy.navKnowledgeBase }] : []),
+    ...(user ? [{ href: '/rag', label: copy.navKnowledgeBase }] : []),
   ];
 
   const pageMeta = pathname.startsWith('/conversation')
@@ -42,7 +42,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="app-shell flex min-h-screen">
-      <aside className="saas-sidebar hidden w-72 flex-shrink-0 flex-col px-5 py-6 lg:flex">
+      <aside className="saas-sidebar sticky top-0 hidden h-screen w-72 flex-shrink-0 flex-col self-start overflow-y-auto px-5 py-6 lg:flex">
         <div className="flex items-center gap-3 px-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-950 text-sm font-bold text-white shadow-[0_16px_30px_rgba(15,23,42,0.18)]">
             AI

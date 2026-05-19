@@ -60,6 +60,10 @@ PROGRESS_MESSAGES = {
         Locale.ZH_CN: "子 agent「{agent_name}」任务节点完成，结果已回传主控 Workflow",
         Locale.EN_US: 'Child agent "{agent_name}" finished and returned its result to the supervisor workflow.',
     },
+    "tool_call": {
+        Locale.ZH_CN: "子 agent「{agent_name}」调用工具：{tool_name}",
+        Locale.EN_US: 'Child agent "{agent_name}" invoked tool: {tool_name}',
+    },
     "supervisor_summary": {
         Locale.ZH_CN: "主控 agent 执行汇总节点：综合子 agent 结果并生成最终回复",
         Locale.EN_US: "Supervisor agent is synthesizing child-agent results into the final reply.",

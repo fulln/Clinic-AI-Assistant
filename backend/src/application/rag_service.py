@@ -40,11 +40,6 @@ class RAGApplicationService:
         description: str | None,
         user_role: str,
     ) -> KnowledgeBase:
-        if user_role != "doctor":
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="只有医师角色可以创建知识库",
-            )
         kb = KnowledgeBase(owner_id=owner_id, name=name, description=description)
         await self._repo.save_kb(kb)
         await self._audit.log(

@@ -13,6 +13,13 @@ class CreateAgentRequest(BaseModel):
     capabilities: list[str] = []
     allowed_roles: list[str] = []
     workflow_config: dict = {}
+    system_prompt_en: Optional[str] = None
+    system_prompt_zh: Optional[str] = None
+    tools: list[str] = []
+    max_tool_turns: int = 3
+    llm_model: Optional[str] = None
+    llm_temperature: Optional[float] = None
+    llm_max_tokens: Optional[int] = None
 
     @field_validator("name")
     @classmethod
@@ -40,6 +47,13 @@ class AgentResponse(BaseModel):
     allowed_roles: list[str]
     status: str
     version: Optional[str] = None
+    system_prompt_en: Optional[str] = None
+    system_prompt_zh: Optional[str] = None
+    tools: list[str] = []
+    max_tool_turns: int = 3
+    llm_model: Optional[str] = None
+    llm_temperature: Optional[float] = None
+    llm_max_tokens: Optional[int] = None
 
     model_config = {"from_attributes": True}
 

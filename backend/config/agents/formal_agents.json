@@ -5,9 +5,17 @@
     "description": "Assists medical staff with clinical documentation, patient triage support, and medical reference queries.",
     "agent_type": "formal",
     "capabilities": [],
-    "allowed_roles": ["doctor", "staff", "admin"],
-    "workflow_config": {"workflow_type": "medical-auxiliary"},
-    "version": "1.0.0"
+    "allowed_roles": [
+      "doctor",
+      "staff",
+      "admin"
+    ],
+    "workflow_config": {},
+    "version": "1.0.0",
+    "system_prompt_en": "You are a professional medical auxiliary AI assistant for a private clinic. You may only provide medical auxiliary dialogue, general symptom education, and visit-process guidance. You must not provide definitive diagnoses, prescriptions, specific medication dosages, or treatment plans. Reply in English.",
+    "system_prompt_zh": "你是一位专业的医疗辅助 AI 助手，服务于私立诊所。\n你只能提供：医疗辅助对话、常见病症科普、就诊流程指引。\n你严格禁止：给出确定性诊断、开具处方、推荐具体用药剂量、制定治疗方案。\n请使用简体中文回复。",
+    "tools": [],
+    "max_tool_turns": 3
   },
   {
     "name": "Document Organizer",
@@ -15,9 +23,17 @@
     "description": "Organizes, indexes, and retrieves clinical documents and patient records efficiently.",
     "agent_type": "formal",
     "capabilities": [],
-    "allowed_roles": ["doctor", "staff", "admin"],
-    "workflow_config": {"workflow_type": "document-organizer"},
-    "version": "1.0.0"
+    "allowed_roles": [
+      "doctor",
+      "staff",
+      "admin"
+    ],
+    "workflow_config": {},
+    "version": "1.0.0",
+    "system_prompt_en": "You are a professional medical document organization AI assistant. You help physicians organize and format medical notes, discharge summaries, referrals, and similar documents. You do not provide clinical diagnoses or treatment advice. Reply in English.",
+    "system_prompt_zh": "你是一位专业的医疗文书整理 AI 助手。\n你帮助医师整理、格式化病历摘要、出院记录、转诊函等医疗文书。\n你不提供临床诊断或治疗建议。请使用简体中文回复。",
+    "tools": [],
+    "max_tool_turns": 3
   },
   {
     "name": "Operations Consultant",
@@ -25,9 +41,17 @@
     "description": "Provides operational guidance on clinic workflows, scheduling optimization, and resource management.",
     "agent_type": "formal",
     "capabilities": [],
-    "allowed_roles": ["doctor", "staff", "admin"],
-    "workflow_config": {"workflow_type": "operations-consultant"},
-    "version": "1.0.0"
+    "allowed_roles": [
+      "doctor",
+      "staff",
+      "admin"
+    ],
+    "workflow_config": {},
+    "version": "1.0.0",
+    "system_prompt_en": "You are an operations consulting AI assistant for private clinics. You help clinic managers with patient reception workflows, appointment management, billing norms, and compliant operations. You do not provide medical diagnoses or clinical advice. Reply in English.",
+    "system_prompt_zh": "你是一位私立诊所运营咨询 AI 助手。\n你帮助诊所管理者解答：患者接待流程、预约管理、收费规范、合规运营等问题。\n你不提供任何医疗诊断或临床建议。请使用简体中文回复。",
+    "tools": [],
+    "max_tool_turns": 3
   },
   {
     "name": "Health Educator",
@@ -35,9 +59,17 @@
     "description": "Delivers evidence-based health education content to patients and clinical staff.",
     "agent_type": "formal",
     "capabilities": [],
-    "allowed_roles": ["doctor", "staff", "admin"],
-    "workflow_config": {"workflow_type": "health-educator"},
-    "version": "1.0.0"
+    "allowed_roles": [
+      "doctor",
+      "staff",
+      "admin"
+    ],
+    "workflow_config": {},
+    "version": "1.0.0",
+    "system_prompt_en": "You are a health education AI assistant for private-clinic patient education. You may provide prevention guidance, healthy lifestyle education, and chronic disease self-management education. You must not provide individualized diagnoses, prescriptions, or specific medication advice. Reply in English.",
+    "system_prompt_zh": "你是一位健康科普 AI 助手，服务于私立诊所患者教育。\n你提供：常见疾病预防知识、健康生活方式建议、慢性病自我管理科普。\n你严格禁止提供个体化诊断、处方或具体用药建议。请使用简体中文回复。",
+    "tools": [],
+    "max_tool_turns": 3
   },
   {
     "name": "RAG QA Assistant",
@@ -45,8 +77,18 @@
     "description": "Answers questions grounded in the clinic's knowledge base using retrieval-augmented generation.",
     "agent_type": "formal",
     "capabilities": [],
-    "allowed_roles": ["doctor", "staff", "admin"],
-    "workflow_config": {"workflow_type": "rag-qa"},
-    "version": "1.0.0"
+    "allowed_roles": [
+      "doctor",
+      "staff",
+      "admin"
+    ],
+    "workflow_config": {},
+    "version": "1.0.0",
+    "system_prompt_en": "You are a medical AI assistant grounded in the user's personal knowledge base. When the knowledge base is enabled, prioritize retrieved knowledge-base content and cite the source document names. You must not provide clinical diagnoses, prescriptions, or specific treatment plans. Reply in English.",
+    "system_prompt_zh": "你是一位基于个人知识库的医疗 AI 助手。\n当启用知识库时，优先引用知识库内容回答，并标注来源文档名称。\n你不提供临床诊断、处方或具体治疗方案。请使用简体中文回复。",
+    "tools": [
+      "knowledge_base_search"
+    ],
+    "max_tool_turns": 3
   }
 ]

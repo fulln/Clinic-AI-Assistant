@@ -38,6 +38,13 @@ def _agent_to_response(agent: Agent) -> AgentResponse:
         allowed_roles=agent.allowed_roles,
         status=agent.status.value,
         version=agent.version,
+        system_prompt_en=agent.system_prompt_en,
+        system_prompt_zh=agent.system_prompt_zh,
+        tools=agent.tools,
+        max_tool_turns=agent.max_tool_turns,
+        llm_model=agent.llm_model,
+        llm_temperature=agent.llm_temperature,
+        llm_max_tokens=agent.llm_max_tokens,
     )
 
 
@@ -182,6 +189,13 @@ async def create_agent(
         capabilities=body.capabilities,
         allowed_roles=body.allowed_roles,
         created_by=current_user.id,
+        system_prompt_en=body.system_prompt_en,
+        system_prompt_zh=body.system_prompt_zh,
+        tools=list(body.tools or []),
+        max_tool_turns=int(body.max_tool_turns or 3),
+        llm_model=body.llm_model,
+        llm_temperature=body.llm_temperature,
+        llm_max_tokens=body.llm_max_tokens,
     )
     saved = await repo.save(agent)
     return _agent_to_response(saved)
@@ -209,6 +223,13 @@ async def update_agent(
     agent.workflow_config = body.workflow_config
     agent.capabilities = body.capabilities
     agent.allowed_roles = body.allowed_roles
+    agent.system_prompt_en = body.system_prompt_en
+    agent.system_prompt_zh = body.system_prompt_zh
+    agent.tools = list(body.tools or [])
+    agent.max_tool_turns = int(body.max_tool_turns or 3)
+    agent.llm_model = body.llm_model
+    agent.llm_temperature = body.llm_temperature
+    agent.llm_max_tokens = body.llm_max_tokens
 
     saved = await repo.save(agent)
     return _agent_to_response(saved)

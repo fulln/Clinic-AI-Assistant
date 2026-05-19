@@ -19,6 +19,16 @@ class ConversationRepository(IConversationRepository):
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
+    async def commit(self) -> None:
+        """Force-commit the underlying session.
+
+        Needed inside SSE generators: FastAPI's `Depends(get_db)` runs its
+        commit *after* the endpoint returns, but the generator keeps writing
+        rows long after that. Persistent state must be committed by hand at
+        each safe checkpoint.
+        """
+        await self._session.commit()
+
     async def find_conversation_by_id(self, conversation_id: uuid.UUID) -> Conversation | None:
         result = await self._session.execute(
             select(ConversationModel).where(ConversationModel.id == conversation_id)

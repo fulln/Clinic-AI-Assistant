@@ -24,6 +24,11 @@ class ToolContext:
     # Side-channel for tools to surface UI artifacts (e.g. RAG chunks) to the
     # streaming layer. Tools append dicts; the SSE layer pops them.
     collected_artifacts: list[dict] = field(default_factory=list)
+    # Tools may add their own name here to signal "further calls are futile"
+    # (e.g. RAG returned empty). The adapter breaks the tool-call loop when
+    # every call in a turn targets an exhausted tool, preventing the LLM
+    # from burning the remaining turns on the same empty search.
+    exhausted_tools: set[str] = field(default_factory=set)
 
 
 @dataclass

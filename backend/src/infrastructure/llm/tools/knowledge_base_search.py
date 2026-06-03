@@ -50,6 +50,7 @@ def _format_for_llm(chunks: list[dict], locale: Locale) -> str:
 async def _handler(arguments: dict, ctx: ToolContext) -> str:
     locale = ctx.locale
     if ctx.rag_repo is None:
+        ctx.exhausted_tools.add("knowledge_base_search")
         return _NO_KB_MSG_EN if locale == Locale.EN_US else _NO_KB_MSG_ZH
 
     query = str(arguments.get("query") or "").strip()
@@ -61,6 +62,7 @@ async def _handler(arguments: dict, ctx: ToolContext) -> str:
 
     kbs = await ctx.rag_repo.find_by_owner(ctx.user_id)
     if not kbs:
+        ctx.exhausted_tools.add("knowledge_base_search")
         return _NO_KB_MSG_EN if locale == Locale.EN_US else _NO_KB_MSG_ZH
 
     query_embedding = embed_query(query)
@@ -84,6 +86,7 @@ async def _handler(arguments: dict, ctx: ToolContext) -> str:
     top_pairs = all_results[:top_k]
 
     if not top_pairs:
+        ctx.exhausted_tools.add("knowledge_base_search")
         return _NO_HITS_MSG_EN if locale == Locale.EN_US else _NO_HITS_MSG_ZH
 
     # Push artifacts onto the side-channel for the SSE layer to consume.

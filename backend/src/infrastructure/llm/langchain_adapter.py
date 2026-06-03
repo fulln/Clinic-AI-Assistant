@@ -203,6 +203,17 @@ class LLMAdapter:
                     artifacts=list(new_artifacts),
                 )
 
+            # If every tool the LLM called this turn has signalled exhaustion
+            # (e.g. RAG returned empty), don't let it burn the remaining turns
+            # retrying the same dead end. Drop tools and stream a final reply.
+            if tool_calls and all(
+                tc["name"] in tool_context.exhausted_tools for tc in tool_calls
+            ):
+                async for chunk in client.astream(self._to_lc_messages(working_messages)):
+                    if chunk.content:
+                        yield chunk.content
+                return
+
         # Hit the loop cap. Force a final answer with tools disabled so the
         # LLM uses whatever context it gathered so far.
         async for chunk in client.astream(self._to_lc_messages(working_messages)):
